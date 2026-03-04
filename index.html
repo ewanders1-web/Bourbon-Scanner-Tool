@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Bourbon Truth">
-<title>🥃 Bourbon Truth Scanner</title>
+<title>🥃 Bourbon Truth Scanner v6</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
@@ -348,7 +348,22 @@ body::before {
 .o-brand:active { opacity: 0.7; }
 
 /* BUY INSTEAD */
-.swap { background: var(--bg2); border: 1px solid rgba(61,37,8,0.3); border-radius: var(--radius); padding: 13px 15px; margin-bottom: 11px; }
+.swap { background: var(--bg2); border: 1px solid rgba(61,37,8,0.3); border-radius: var(--radius); padding: 13px 15px; margin-bottom: 11px; transition: border-color 0.3s; }
+.swap.cam-highlight { border-color: var(--gold); animation: camPulse 1.5s ease 3; }
+@keyframes camPulse { 0%,100%{box-shadow:0 0 0 0 rgba(201,148,58,0);} 50%{box-shadow:0 0 0 6px rgba(201,148,58,0.25);} }
+.tab-cam-btn {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 11px 14px; margin-bottom: 12px;
+  background: linear-gradient(135deg, var(--bg3) 0%, var(--bg4) 100%);
+  border: 1.5px dashed var(--gold2); border-radius: var(--radius);
+  color: var(--gold); font-family: 'DM Sans', sans-serif; font-size: 13px;
+  cursor: pointer; transition: all 0.2s;
+}
+.tab-cam-btn:active { border-style: solid; border-color: var(--gold); }
+.tab-cam-btn-icon { font-size: 20px; flex-shrink: 0; }
+.tab-cam-btn-text { text-align: left; }
+.tab-cam-btn-title { font-weight: 600; }
+.tab-cam-btn-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
 .skip-header { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
 .skip-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 15px; }
 .skip-sub { font-size: 10.5px; color: var(--text3); }
@@ -715,7 +730,9 @@ let filterMode = 'all';
 let openCard = null;
 let ownerFilter = 'all';
 let cameraStream = null;
+let cameraContext = 'scanner'; // 'scanner' | 'buyInstead' | 'altFinder'
 let aiResults = {};
+let buyAiResults = {}; // brand -> { loading, text }
 let favorites = [];
 let recentlyViewed = [];
 
@@ -811,8 +828,16 @@ async function lookupBrand(brand) {
 // ═══════════════════════════════════════════════════════════════════════════
 // CAMERA / BARCODE
 // ═══════════════════════════════════════════════════════════════════════════
-function openCamera() {
+function openCamera(context) {
+  cameraContext = context || 'scanner';
   document.getElementById('cam-modal').classList.add('open');
+  // Update instructions based on context
+  const instr = document.getElementById('cam-instructions');
+  if(instr) {
+    if(cameraContext === 'buyInstead') instr.textContent = 'Scan a bottle to find what to buy instead';
+    else if(cameraContext === 'altFinder') instr.textContent = 'Scan a bottle to find alternatives';
+    else instr.textContent = 'Point at a bottle label — AI reads it automatically';
+  }
   startCameraCapture();
 }
 
@@ -949,13 +974,35 @@ async function identifyLabelFromImage(base64, status) {
       if(navigator.vibrate) navigator.vibrate([30,60,30]);
       setTimeout(() => {
         closeCamera();
-        searchQuery = match.brand; filterMode = 'all'; openCard = match.brand; currentTab = 0;
-        addToRecent(match.brand); render(); showToast('✅ Found: ' + match.brand);
+        addToRecent(match.brand);
+        if(cameraContext === 'buyInstead') {
+          currentTab = 4;
+          render();
+          // Scroll to and highlight the matching swap card
+          setTimeout(() => {
+            const el = document.getElementById('swap-' + match.brand.replace(/\s+/g,'_').replace(/[^a-z0-9_]/gi,''));
+            if(el) { el.scrollIntoView({behavior:'smooth', block:'center'}); el.classList.add('cam-highlight'); }
+          }, 200);
+        } else if(cameraContext === 'altFinder') {
+          currentTab = 5;
+          altSelectBrand(match.brand);
+          // Auto-run AI search
+          setTimeout(() => runAltAi(), 300);
+        } else {
+          searchQuery = match.brand; filterMode = 'all'; openCard = match.brand; currentTab = 0;
+          render();
+        }
+        showToast('✅ Found: ' + match.brand);
       }, 700);
     } else {
       status.textContent = '👀 Saw: "' + text + '" — searching…';
       setTimeout(() => {
-        closeCamera(); searchQuery = text; filterMode = 'all'; currentTab = 0; render();
+        closeCamera();
+        if(cameraContext === 'altFinder') {
+          currentTab = 5; altQuery = text; altSelectedBrand = null; render();
+        } else {
+          searchQuery = text; filterMode = 'all'; currentTab = 0; render();
+        }
       }, 700);
     }
   } catch(err) {
@@ -1241,16 +1288,20 @@ function renderOwnership() {
 function renderBuyInstead() {
   const ndps = BRANDS.filter(b=>b.verdict==='sourced'||b.verdict==='mixed');
   const cardsH = ndps.map(b=>{
-    const swaps=SWAPS[b.brand]||b.alts||[];
+    const swaps = SWAPS[b.brand]||b.alts||[];
     if(!swaps.length) return '';
-    const vc=b.verdict==='sourced'?'var(--sourced)':'var(--mixed)';
-    const itemsH=swaps.map(n=>{
+    const vc = b.verdict==='sourced'?'var(--sourced)':'var(--mixed)';
+    const safeId = b.brand.replace(/\s+/g,'_').replace(/[^a-z0-9_]/gi,'');
+    const ai = buyAiResults[b.brand];
+    const itemsH = swaps.map(n=>{
       const rd=getBrand(n); if(!rd) return '';
+      const col = COLOR[rd.parent]||'#888';
       return `<div class="buy-item">
         <div>
-          <div class="buy-name">${e(rd.brand)}</div>
-          <div class="buy-maker">🏭 ${e(rd.maker)}</div>
+          <div class="buy-name">✅ ${e(rd.brand)}</div>
+          <div class="buy-maker">🏭 ${e(rd.maker)} · 📍 ${e(rd.loc)}</div>
           <div class="buy-note-t">${e(rd.notes.split('.')[0])}.</div>
+          <div style="font-size:10px;color:${col};margin-top:3px">${e(rd.parent.split(' (')[0])}</div>
         </div>
         <div style="flex-shrink:0;text-align:right">
           <div class="buy-price">${e(rd.price)}</div>
@@ -1258,23 +1309,60 @@ function renderBuyInstead() {
         </div>
       </div>`;
     }).join('');
-    return `<div class="swap">
+    const aiH = ai && ai.loading
+      ? `<div class="ai-result" style="margin-top:10px"><div class="ai-loading">Searching web for ${e(b.brand)} info…</div></div>`
+      : ai && ai.text
+      ? `<div class="ai-result" style="margin-top:10px;border-color:rgba(201,148,58,0.3)"><span class="ai-label">🔍 Live Web Info</span>${e(ai.text).replace(/\n/g,'<br>')}</div>`
+      : `<button class="ai-btn" style="margin-top:10px" onclick="buyWebSearch('${e(b.brand)}')">🔍 Search web for current pricing &amp; availability</button>`;
+    return `<div class="swap" id="swap-${safeId}">
       <div class="skip-header">
         <span style="font-size:20px">❌</span>
         <div>
           <div class="skip-name" style="color:${vc}">${e(b.brand)}</div>
-          <div class="skip-sub">${e(b.price)} · ${e(b.parent)}</div>
+          <div class="skip-sub">${e(b.price)} · ${e(b.parent.split(' (')[0])}</div>
         </div>
       </div>
       <div class="skip-note">${e(b.notes.split('.')[0])}.</div>
       <div class="buy-lbl">✅ Buy instead:</div>
       ${itemsH}
+      ${aiH}
     </div>`;
   }).join('');
-  return `<h2 class="section-h2">💡 Skip It → Buy This Instead</h2>
-    <p class="section-desc">For every overpriced NDP there's a legitimately distilled bottle that delivers more for less.</p>
+  return `
+    <button class="tab-cam-btn" onclick="openCamera('buyInstead')">
+      <span class="tab-cam-btn-icon">📷</span>
+      <div class="tab-cam-btn-text">
+        <div class="tab-cam-btn-title">Scan a Bottle</div>
+        <div class="tab-cam-btn-sub">Point at any label — jumps straight to its swap</div>
+      </div>
+    </button>
+    <h2 class="section-h2">💡 Skip It → Buy This Instead</h2>
+    <p class="section-desc">For every overpriced NDP there's a legitimately distilled bottle that delivers more.</p>
     ${cardsH}
-    <div class="footer">Prices are approximate MSRP. Availability varies by region.</div>`;
+    <div class="footer">Tap 🔍 on any card for live web pricing. Prices are approximate MSRP.</div>`;
+}
+
+async function buyWebSearch(brandName) {
+  buyAiResults[brandName] = { loading: true, text: null };
+  if(currentTab === 4) document.getElementById('main').innerHTML = renderBuyInstead();
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514', max_tokens: 400,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: 'You are a bourbon expert. Search for current info on the requested bourbon: recent ownership changes, current street pricing, availability, and any recent controversy or news. Be concise, 120 words max, plain text only, no markdown.',
+        messages: [{ role: 'user', content: `Search for current pricing, availability, and any recent news about: ${brandName} bourbon whiskey. Who actually makes it and what does it cost right now?` }]
+      })
+    });
+    const data = await resp.json();
+    const text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('\n').trim();
+    buyAiResults[brandName] = { loading: false, text: text || 'No results found.' };
+  } catch(err) {
+    buyAiResults[brandName] = { loading: false, text: 'Unable to connect. Check network.' };
+  }
+  if(currentTab === 4) document.getElementById('main').innerHTML = renderBuyInstead();
 }
 
 // ─── ALT FINDER ────────────────────────────────────────────────────────────
@@ -1394,7 +1482,14 @@ function renderAltFinder() {
   return `
     <div class="alt-finder-wrap">
       <div class="alt-search-hero">
-        <div class="alt-hero-label">🔍 Find alternatives for…</div>
+        <button class="tab-cam-btn" style="margin-bottom:12px" onclick="openCamera('altFinder')">
+          <span class="tab-cam-btn-icon">📷</span>
+          <div class="tab-cam-btn-text">
+            <div class="tab-cam-btn-title">Scan a Bottle</div>
+            <div class="tab-cam-btn-sub">AI identifies it &amp; searches web for alternatives</div>
+          </div>
+        </button>
+        <div class="alt-hero-label">🔍 Or type to find alternatives for…</div>
         <div class="alt-search-row">
           <input class="alt-search-input" id="alt-si" type="search"
             placeholder="Search any bourbon brand…" value="${e(altQuery)}"
@@ -1458,7 +1553,7 @@ async function runAltAi() {
       body:JSON.stringify({
         model:'claude-sonnet-4-20250514', max_tokens:1000,
         tools:[{type:'web_search_20250305',name:'web_search'}],
-        system:`You are an expert bourbon sommelier and industry transparency advocate. When asked for alternatives to a bourbon brand, recommend 3–5 legitimately self-distilled alternatives. Be concise. For each, give: Name, Distillery, Price, and one sentence why it's better. Use plain text, no markdown, no headers. Prioritize independent and family-owned distilleries when possible. Max 250 words.`,
+        system:`You are an expert bourbon sommelier and industry transparency advocate. Search the web for current information. Recommend 3–5 legitimately self-distilled alternatives to the requested brand. For each give: Name, Distillery, current street price (search for this), and one sentence why it's a better buy. Use plain text only, no markdown, no headers. Prioritize independent and family-owned distilleries. Note any recent ownership changes you find. Max 250 words.`,
         messages:[{role:'user',content:`The consumer wants alternatives to: ${b.brand} (${b.verdict==='sourced'?'NDP/sourced':b.verdict==='mixed'?'sourced base+finished':'self-distilled'}, ${b.price}, ${b.maker}). Budget preference: ${budgetLabel}. Flavor preference: ${flavorLabel}. Search for the best currently available alternatives that are actually distilled (not NDP).`}]
       })
     });
