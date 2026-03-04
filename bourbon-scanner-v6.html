@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Bourbon Truth">
+<title>🥃 Bourbon Truth Scanner v6</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<style>
+:root {
+  --bg:     #080502;
+  --bg2:    #0f0904;
+  --bg3:    #160d05;
+  --bg4:    #1e1208;
+  --gold:   #c9943a;
+  --gold2:  #7a501a;
+  --gold3:  #3d2508;
+  --goldb:  #f0c060; /* bright gold for highlights */
+  --text:   #e8d4a8;
+  --text2:  #9e7c40;
+  --text3:  #4e3515;
+  --legit:  #1fc55a;
+  --sourced:#e84444;
+  --mixed:  #e8960a;
+  --radius: 12px;
+  --tab-h:  64px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; overflow-x: hidden; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', Georgia, sans-serif;
+  min-height: 100vh;
+  padding-bottom: calc(var(--tab-h) + var(--safe-b) + 8px);
+}
+
+/* Grain texture overlay */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* HEADER */
+#header {
+  position: relative; overflow: hidden;
+  background: linear-gradient(170deg, #1e0e02 0%, var(--bg) 100%);
+  border-bottom: 1px solid rgba(201,148,58,0.25);
+  padding: calc(env(safe-area-inset-top, 10px) + 14px) 16px 14px;
+  text-align: center; z-index: 10;
+}
+#header::before {
+  content: '';
+  position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
+  width: 300px; height: 140px;
+  background: radial-gradient(ellipse, rgba(201,148,58,0.18) 0%, transparent 70%);
+  pointer-events: none;
+}
+#header::after {
+  content: '';
+  position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(201,148,58,0.4), transparent);
+}
+.h-icon { font-size: 28px; line-height: 1; margin-bottom: 4px; }
+.h-title {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: clamp(17px, 5vw, 26px);
+  font-weight: 900;
+  color: var(--goldb);
+  letter-spacing: 0.12em;
+  text-shadow: 0 0 40px rgba(240,192,96,0.35);
+}
+.h-sub { color: var(--text3); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; margin-top: 3px; }
+
+/* STATS ROW */
+.stats-row {
+  display: flex; justify-content: center; gap: 10px; margin-top: 10px;
+  flex-wrap: wrap;
+}
+.stat-chip {
+  padding: 3px 10px; border-radius: 20px; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.06em;
+}
+.stat-chip.legit  { background: rgba(31,197,90,0.12); border: 1px solid rgba(31,197,90,0.25); color: var(--legit); }
+.stat-chip.sourced { background: rgba(232,68,68,0.1); border: 1px solid rgba(232,68,68,0.22); color: var(--sourced); }
+.stat-chip.mixed  { background: rgba(232,150,10,0.1); border: 1px solid rgba(232,150,10,0.22); color: var(--mixed); }
+
+/* BOTTOM NAV */
+#nav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+  background: rgba(8,5,2,0.96);
+  border-top: 1px solid rgba(201,148,58,0.18);
+  display: flex;
+  padding-bottom: var(--safe-b);
+  backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px);
+  height: calc(var(--tab-h) + var(--safe-b));
+}
+.nav-btn {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 8px 2px 6px;
+  background: none; border: none; cursor: pointer;
+  color: var(--text3);
+  font-family: 'DM Sans', sans-serif; font-size: 9px; font-weight: 500;
+  letter-spacing: 0.04em; gap: 3px;
+  position: relative; transition: color 0.2s;
+}
+.nav-btn.active { color: var(--goldb); }
+.nav-btn.active::after {
+  content: ''; position: absolute; top: 0; left: 20%; right: 20%; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  border-radius: 0 0 2px 2px;
+}
+.nav-icon { font-size: 19px; line-height: 1; }
+.nav-label { font-size: 8.5px; }
+
+/* MAIN */
+#main { padding: 14px 14px 0; max-width: 680px; margin: 0 auto; position: relative; z-index: 1; }
+
+/* SEARCH */
+.search-wrap { position: relative; margin-bottom: 11px; }
+.search-input {
+  width: 100%; padding: 13px 46px 13px 16px;
+  background: var(--bg3); border: 1.5px solid var(--gold3); border-radius: var(--radius);
+  color: var(--text); font-size: 16px; font-family: 'DM Sans', sans-serif;
+  outline: none; appearance: none; transition: border-color 0.2s, box-shadow 0.2s;
+}
+.search-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,148,58,0.08); }
+.search-input::placeholder { color: var(--text3); }
+.search-clear {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text3); font-size: 18px;
+  cursor: pointer; padding: 4px; line-height: 1; display: none;
+}
+
+/* RECENTLY VIEWED */
+.recent-section { margin-bottom: 12px; }
+.recent-label { font-size: 9px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 7px; display: flex; align-items: center; gap: 6px; }
+.recent-label::after { content: ''; flex: 1; height: 1px; background: rgba(61,37,8,0.5); }
+.recent-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.recent-chip {
+  padding: 5px 11px; border-radius: 20px; font-size: 11px;
+  background: var(--bg3); border: 1px solid var(--gold3); color: var(--text2);
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.recent-chip:active { background: var(--bg4); border-color: var(--gold2); color: var(--goldb); }
+.recent-chip .recent-badge { font-size: 9px; margin-left: 3px; opacity: 0.7; }
+
+/* CAMERA BUTTON */
+.cam-btn {
+  width: 100%; padding: 14px;
+  background: linear-gradient(135deg, var(--bg3) 0%, var(--bg4) 100%);
+  border: 1.5px dashed var(--gold2); border-radius: var(--radius);
+  color: var(--gold); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+  cursor: pointer; margin-bottom: 12px;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  transition: all 0.2s;
+}
+.cam-btn:active { background: var(--bg4); border-color: var(--gold); border-style: solid; }
+
+/* CAMERA MODAL */
+#cam-modal {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.98); z-index: 500;
+  flex-direction: column; align-items: center; justify-content: center;
+  padding: 20px;
+}
+#cam-modal.open { display: flex; }
+#cam-container {
+  position: relative; width: 100%; max-width: 420px;
+  border-radius: 16px; overflow: hidden;
+  border: 1.5px solid rgba(201,148,58,0.4);
+  box-shadow: 0 0 60px rgba(201,148,58,0.1);
+}
+#cam-container video { width: 100%; display: block; }
+#cam-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.scan-frame {
+  width: 72%; height: 85px;
+  border-radius: 10px;
+  position: relative;
+  box-shadow: 0 0 0 2000px rgba(0,0,0,0.45);
+}
+.scan-frame::before, .scan-frame::after {
+  content: ''; position: absolute; width: 22px; height: 22px;
+  border-color: var(--goldb); border-style: solid;
+}
+.scan-frame::before { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 6px 0 0 0; }
+.scan-frame::after  { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 6px 0; }
+.scan-frame-inner::before, .scan-frame-inner::after {
+  content: ''; position: absolute; width: 22px; height: 22px;
+  border-color: var(--goldb); border-style: solid;
+}
+.scan-frame-inner::before { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 6px 0 0; }
+.scan-frame-inner::after  { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 6px; }
+.scan-line {
+  position: absolute; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--goldb), transparent);
+  animation: scanAnim 2.2s ease-in-out infinite;
+  box-shadow: 0 0 12px var(--goldb), 0 0 24px rgba(240,192,96,0.4);
+}
+@keyframes scanAnim {
+  0%,100% { top: 0; opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  50% { top: calc(100% - 2px); }
+}
+.cam-close {
+  margin-top: 18px; padding: 12px 36px;
+  background: var(--bg3); border: 1px solid var(--gold2); border-radius: 30px;
+  color: var(--gold); font-family: 'DM Sans', sans-serif; font-size: 14px; cursor: pointer;
+  transition: all 0.2s;
+}
+.cam-close:active { background: var(--bg4); }
+.cam-status { margin-top: 12px; font-size: 13px; color: var(--text2); text-align: center; min-height: 20px; }
+.cam-instructions { color: var(--text3); font-size: 11.5px; text-align: center; margin-bottom: 14px; line-height: 1.7; }
+
+/* FILTER PILLS */
+.pills { display: flex; gap: 6px; flex-wrap: nowrap; margin-bottom: 11px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.pills::-webkit-scrollbar { display: none; }
+.pill {
+  padding: 6px 13px; border-radius: 20px; border: 1px solid rgba(61,37,8,0.6);
+  background: transparent; color: var(--text3); font-size: 11.5px;
+  cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500;
+  white-space: nowrap; transition: all 0.15s; flex-shrink: 0;
+}
+.pill.active { background: var(--gold); border-color: var(--gold); color: var(--bg); font-weight: 700; }
+
+.results-count { color: var(--text3); font-size: 11px; margin-bottom: 10px; }
+
+/* BRAND CARDS */
+.bcard {
+  background: var(--bg2); border: 1px solid rgba(61,37,8,0.35);
+  border-radius: var(--radius); padding: 13px 14px; margin-bottom: 9px;
+  cursor: pointer; position: relative; overflow: hidden;
+  transition: background 0.18s, border-color 0.18s;
+  border-left-width: 4px;
+}
+.bcard.open { background: var(--bg3); }
+.bcard.legit   { border-left-color: var(--legit); }
+.bcard.sourced { border-left-color: var(--sourced); }
+.bcard.mixed   { border-left-color: var(--mixed); }
+.bcard-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; }
+.bcard-name-row { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; }
+.bcard-name { font-family: 'Playfair Display', serif; font-size: 15.5px; font-weight: 700; color: var(--text); }
+.bcard-pts { font-size: 9.5px; color: var(--gold); border: 1px solid rgba(201,148,58,0.22); padding: 1px 6px; border-radius: 10px; letter-spacing: 0.03em; }
+.verdict-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.08em; white-space: nowrap;
+  flex-shrink: 0; padding: 3px 9px; border-radius: 20px;
+}
+.verdict-badge.legit   { background: rgba(31,197,90,0.12); border: 1px solid rgba(31,197,90,0.3); color: var(--legit); }
+.verdict-badge.sourced { background: rgba(232,68,68,0.1); border: 1px solid rgba(232,68,68,0.3); color: var(--sourced); }
+.verdict-badge.mixed   { background: rgba(232,150,10,0.1); border: 1px solid rgba(232,150,10,0.28); color: var(--mixed); }
+
+.bcard-maker { font-size: 11.5px; color: var(--text2); margin-top: 5px; }
+.bcard-meta { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 3px; margin-top: 3px; }
+.bcard-parent { font-size: 10.5px; }
+.bcard-price { font-size: 11px; color: var(--text3); font-weight: 500; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.tag { font-size: 9.5px; padding: 2px 7px; border-radius: 10px; background: var(--bg4); border: 1px solid rgba(61,37,8,0.5); color: var(--text3); font-weight: 500; }
+
+/* TRUTH SCORE BAR */
+.score-bar-wrap { margin-top: 9px; }
+.score-bar-label { display: flex; justify-content: space-between; font-size: 9.5px; color: var(--text3); margin-bottom: 4px; }
+.score-bar-label span:last-child { color: var(--text2); font-weight: 600; }
+.score-bar-track { height: 4px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; }
+.score-bar-fill {
+  height: 100%; border-radius: 4px;
+  transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.score-bar-fill.legit   { background: linear-gradient(90deg, #0f7a35, var(--legit)); }
+.score-bar-fill.sourced { background: linear-gradient(90deg, #8a1a1a, var(--sourced)); }
+.score-bar-fill.mixed   { background: linear-gradient(90deg, #7a5200, var(--mixed)); }
+
+/* EXPAND */
+.expand { margin-top: 13px; padding-top: 13px; border-top: 1px solid rgba(61,37,8,0.35); }
+.notes { border-radius: 8px; padding: 11px 13px; font-size: 12.5px; line-height: 1.8; color: #c2996a; }
+.notes.legit   { background: #020e06; border: 1px solid rgba(31,197,90,0.12); }
+.notes.sourced { background: #0d0202; border: 1px solid rgba(232,68,68,0.12); }
+.notes.mixed   { background: #0d0800; border: 1px solid rgba(232,150,10,0.12); }
+.parent-box { margin-top: 9px; background: var(--bg); border-radius: 8px; padding: 9px 12px; }
+.parent-name { font-size: 12px; font-weight: 600; margin-bottom: 3px; }
+.parent-note { font-size: 11px; color: var(--text3); line-height: 1.6; }
+.alts-sec { margin-top: 10px; }
+.alts-lbl { font-size: 9.5px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 7px; }
+.alt-chip {
+  display: inline-block; padding: 5px 10px; border-radius: 7px;
+  background: rgba(31,197,90,0.06); border: 1px solid rgba(31,197,90,0.22);
+  color: var(--legit); font-size: 11px; cursor: pointer;
+  font-family: 'DM Sans', sans-serif; font-weight: 500;
+  margin: 0 5px 5px 0; transition: background 0.15s;
+}
+.alt-chip:active { background: rgba(31,197,90,0.12); }
+
+/* FAVORITE BUTTON */
+.fav-btn {
+  background: none; border: none; cursor: pointer;
+  font-size: 16px; padding: 2px 4px; line-height: 1;
+  color: var(--text3); flex-shrink: 0; transition: transform 0.2s;
+}
+.fav-btn.faved { color: #f0a000; }
+.fav-btn:active { transform: scale(1.3); }
+
+/* AI LOOKUP */
+.ai-btn {
+  width: 100%; margin-top: 11px; padding: 11px;
+  background: linear-gradient(135deg, var(--bg4) 0%, #1a1000 100%);
+  border: 1px solid rgba(201,148,58,0.28); border-radius: 8px;
+  color: var(--gold); font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 7px;
+  transition: all 0.2s;
+}
+.ai-btn:active { border-color: var(--gold); background: var(--bg4); }
+.ai-result {
+  margin-top: 10px; background: var(--bg4); border: 1px solid rgba(201,148,58,0.18);
+  border-radius: 8px; padding: 12px; font-size: 12.5px; color: var(--text2); line-height: 1.8;
+}
+.ai-result .ai-loading { display: flex; align-items: center; gap: 9px; color: var(--gold); font-size: 13px; }
+.ai-result .ai-loading::before { content: ''; width: 13px; height: 13px; border: 2px solid var(--gold); border-top-color: transparent; border-radius: 50%; animation: spin 0.8s linear infinite; display: block; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.ai-label { color: var(--goldb); font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; margin-bottom: 8px; display: block; }
+
+/* LABEL DECODER */
+.clue { border-radius: 9px; padding: 11px 13px; margin-bottom: 8px; }
+.clue.safe   { background: #020a04; border: 1px solid rgba(31,197,90,0.18); border-left: 4px solid var(--legit); }
+.clue.unsafe { background: #0a0202; border: 1px solid rgba(232,68,68,0.15); border-left: 4px solid var(--sourced); }
+.clue.warn   { background: #0a0600; border: 1px solid rgba(232,150,10,0.15); border-left: 4px solid var(--mixed); }
+.clue-q { font-family: 'DM Mono', monospace; font-size: 11.5px; color: var(--text); margin-bottom: 4px; }
+.clue-a { font-size: 12px; line-height: 1.5; font-weight: 500; }
+.clue-a.safe   { color: var(--legit); }
+.clue-a.unsafe { color: var(--sourced); }
+.clue-a.warn   { color: var(--mixed); }
+
+/* OWNERSHIP */
+.owner-card { border-radius: var(--radius); padding: 13px 15px; margin-bottom: 12px; background: var(--bg2); border-left-width: 4px; border-left-style: solid; }
+.owner-name { font-family: 'Playfair Display', serif; font-size: 14.5px; font-weight: 700; margin-bottom: 4px; }
+.owner-note { font-size: 11px; color: var(--text3); line-height: 1.65; margin-bottom: 9px; }
+.owner-brands { display: flex; flex-wrap: wrap; gap: 5px; }
+.o-brand { padding: 3px 10px; border-radius: 6px; font-size: 11px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-weight: 500; transition: opacity 0.15s; }
+.o-brand:active { opacity: 0.7; }
+
+/* BUY INSTEAD */
+.swap { background: var(--bg2); border: 1px solid rgba(61,37,8,0.3); border-radius: var(--radius); padding: 13px 15px; margin-bottom: 11px; transition: border-color 0.3s; }
+.swap.cam-highlight { border-color: var(--gold); animation: camPulse 1.5s ease 3; }
+@keyframes camPulse { 0%,100%{box-shadow:0 0 0 0 rgba(201,148,58,0);} 50%{box-shadow:0 0 0 6px rgba(201,148,58,0.25);} }
+.tab-cam-btn {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 11px 14px; margin-bottom: 12px;
+  background: linear-gradient(135deg, var(--bg3) 0%, var(--bg4) 100%);
+  border: 1.5px dashed var(--gold2); border-radius: var(--radius);
+  color: var(--gold); font-family: 'DM Sans', sans-serif; font-size: 13px;
+  cursor: pointer; transition: all 0.2s;
+}
+.tab-cam-btn:active { border-style: solid; border-color: var(--gold); }
+.tab-cam-btn-icon { font-size: 20px; flex-shrink: 0; }
+.tab-cam-btn-text { text-align: left; }
+.tab-cam-btn-title { font-weight: 600; }
+.tab-cam-btn-sub { font-size: 11px; color: var(--text3); margin-top: 1px; }
+.skip-header { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+.skip-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 15px; }
+.skip-sub { font-size: 10.5px; color: var(--text3); }
+.skip-note { font-size: 12px; color: var(--text3); margin-bottom: 10px; line-height: 1.65; }
+.buy-lbl { font-size: 9.5px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 7px; }
+.buy-item { background: rgba(31,197,90,0.04); border: 1px solid rgba(31,197,90,0.17); border-radius: 8px; padding: 10px 12px; margin-bottom: 7px; display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.buy-name { color: var(--legit); font-size: 14px; font-weight: 600; }
+.buy-maker { color: #16a34a; font-size: 11px; margin-top: 1px; }
+.buy-note-t { color: #14532d; font-size: 11px; margin-top: 3px; line-height: 1.5; }
+.buy-price { color: var(--legit); font-size: 13px; font-weight: 700; white-space: nowrap; text-align: right; }
+.buy-pts { color: #16a34a; font-size: 10.5px; }
+
+/* INFO BOX */
+.info-box { background: var(--bg3); border: 1px solid rgba(61,37,8,0.4); border-radius: 9px; padding: 13px; margin-top: 12px; }
+.info-title { font-size: 13px; font-weight: 600; margin-bottom: 5px; }
+.info-text { color: var(--text2); font-size: 12px; line-height: 1.75; }
+
+/* SECTION HEADERS */
+.section-h2 {
+  font-family: 'Playfair Display', serif; font-size: 19px; font-weight: 700;
+  color: var(--goldb); margin-bottom: 6px;
+}
+.section-desc { color: var(--text3); font-size: 12.5px; margin-bottom: 16px; line-height: 1.75; }
+.footer { margin-top: 28px; padding: 14px; border-top: 1px solid rgba(61,37,8,0.25); font-size: 10.5px; color: var(--text3); line-height: 1.85; text-align: center; }
+
+/* ALT FINDER */
+.alt-finder-wrap { padding: 0; }
+.alt-search-hero {
+  background: linear-gradient(160deg, var(--bg4) 0%, var(--bg3) 100%);
+  border: 1.5px solid var(--gold2); border-radius: var(--radius);
+  padding: 16px; margin-bottom: 14px; position: relative; overflow: hidden;
+}
+.alt-search-hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% -10%, rgba(122,80,26,0.12) 0%, transparent 65%);
+  pointer-events: none;
+}
+.alt-hero-label { font-size: 9.5px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 9px; font-weight: 600; }
+.alt-search-row { display: flex; gap: 8px; align-items: center; }
+.alt-search-input {
+  flex: 1; padding: 11px 14px;
+  background: var(--bg); border: 1.5px solid var(--gold3); border-radius: 9px;
+  color: var(--text); font-size: 15px; font-family: 'DM Sans', sans-serif;
+  outline: none; appearance: none; transition: border-color 0.2s, box-shadow 0.2s;
+}
+.alt-search-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,148,58,0.07); }
+.alt-search-input::placeholder { color: var(--text3); }
+.alt-search-clear { background: none; border: none; color: var(--text3); font-size: 18px; cursor: pointer; padding: 4px; line-height: 1; flex-shrink: 0; }
+.alt-suggestions {
+  background: var(--bg2); border: 1px solid var(--gold3); border-radius: 9px;
+  max-height: 200px; overflow-y: auto; margin-top: 7px;
+  scrollbar-width: thin; scrollbar-color: var(--gold3) transparent;
+}
+.alt-sug-item {
+  padding: 10px 13px; display: flex; justify-content: space-between; align-items: center;
+  cursor: pointer; border-bottom: 1px solid rgba(61,37,8,0.2); gap: 8px; transition: background 0.12s;
+}
+.alt-sug-item:last-child { border-bottom: none; }
+.alt-sug-item:active { background: var(--bg4); }
+.alt-sug-name { font-size: 14px; color: var(--text); font-weight: 500; }
+.alt-sug-badge { font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; white-space: nowrap; flex-shrink: 0; }
+.alt-sug-badge.legit   { color: var(--legit); }
+.alt-sug-badge.sourced { color: var(--sourced); }
+.alt-sug-badge.mixed   { color: var(--mixed); }
+
+.alt-filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+.alt-filter-group { flex: 1; min-width: 130px; }
+.alt-filter-label { font-size: 9.5px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.09em; font-weight: 600; margin-bottom: 5px; }
+.alt-filter-sel {
+  width: 100%; padding: 9px 10px;
+  background: var(--bg2); border: 1px solid var(--gold3); border-radius: 8px;
+  color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px;
+  outline: none; appearance: none; cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%233d2508'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
+}
+
+.alt-selected-card {
+  background: var(--bg2); border-radius: var(--radius); padding: 13px 15px;
+  margin-bottom: 13px; border: 1px solid rgba(61,37,8,0.3); border-left-width: 4px; border-left-style: solid;
+}
+.alt-selected-card.sourced { border-left-color: var(--sourced); }
+.alt-selected-card.mixed   { border-left-color: var(--mixed); }
+.alt-selected-card.legit   { border-left-color: var(--legit); }
+.alt-sc-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; margin-bottom: 7px; }
+.alt-sc-name { font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 700; color: var(--text); }
+.alt-sc-clear { background: none; border: none; color: var(--text3); font-size: 13px; cursor: pointer; padding: 2px 7px; border-radius: 5px; border: 1px solid rgba(61,37,8,0.3); font-family: 'DM Sans', sans-serif; flex-shrink: 0; }
+.alt-sc-meta { font-size: 11.5px; color: var(--text2); margin-bottom: 5px; }
+.alt-sc-note { font-size: 12px; color: var(--text3); line-height: 1.65; }
+
+.alt-section-lbl { font-size: 9.5px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600; margin-bottom: 9px; display: flex; align-items: center; gap: 7px; }
+.alt-section-lbl::after { content: ''; flex: 1; height: 1px; background: rgba(61,37,8,0.35); }
+.alt-curated-list { margin-bottom: 14px; }
+.alt-rec-card {
+  background: rgba(31,197,90,0.04); border: 1px solid rgba(31,197,90,0.18); border-radius: 9px;
+  padding: 11px 13px; margin-bottom: 7px; cursor: pointer;
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;
+  transition: background 0.15s;
+}
+.alt-rec-card:active { background: rgba(31,197,90,0.08); }
+.alt-rec-name { color: var(--legit); font-size: 14px; font-weight: 600; }
+.alt-rec-maker { color: #16a34a; font-size: 11px; margin-top: 2px; }
+.alt-rec-note { color: #14532d; font-size: 11px; margin-top: 3px; line-height: 1.5; }
+.alt-rec-right { text-align: right; flex-shrink: 0; }
+.alt-rec-price { color: var(--legit); font-size: 13px; font-weight: 700; }
+.alt-rec-pts { color: #16a34a; font-size: 10.5px; margin-top: 2px; }
+.alt-ai-section { margin-top: 4px; }
+.alt-ai-btn {
+  width: 100%; padding: 13px;
+  background: linear-gradient(135deg, var(--bg4) 0%, #1a0d14 100%);
+  border: 1.5px solid rgba(201,148,58,0.32); border-radius: var(--radius);
+  color: var(--gold); font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500;
+  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all 0.2s;
+}
+.alt-ai-btn:active { border-color: var(--gold); }
+.alt-ai-btn:disabled { opacity: 0.6; cursor: default; }
+.alt-ai-output {
+  margin-top: 10px; background: var(--bg4); border: 1px solid rgba(201,148,58,0.22);
+  border-radius: var(--radius); padding: 14px; font-size: 13px; color: var(--text2); line-height: 1.85;
+}
+.alt-ai-output h4 { color: var(--goldb); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; margin-bottom: 9px; }
+.alt-no-brand {
+  background: var(--bg2); border: 1px solid rgba(61,37,8,0.25); border-radius: var(--radius);
+  padding: 32px 20px; text-align: center; color: var(--text3); font-size: 13px; line-height: 1.8;
+}
+.alt-no-brand .alt-no-icon { font-size: 38px; margin-bottom: 13px; }
+
+/* TOAST */
+#toast {
+  position: fixed; bottom: calc(var(--tab-h) + var(--safe-b) + 12px); left: 50%; transform: translateX(-50%) scale(0.9);
+  background: var(--bg3); border: 1px solid var(--gold2); border-radius: 22px;
+  padding: 9px 20px; font-size: 13px; font-weight: 500; color: var(--text); z-index: 999;
+  opacity: 0; transition: opacity 0.25s, transform 0.25s; white-space: nowrap; pointer-events: none;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) scale(1); }
+
+/* FADE-IN for cards */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.bcard { animation: fadeUp 0.25s ease both; }
+
+/* SECTION TRANSITION */
+#main { animation: fadeIn 0.2s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+/* FAVORITES SECTION */
+.fav-section { margin-bottom: 14px; }
+.fav-label { font-size: 9px; color: var(--gold2); text-transform: uppercase; letter-spacing: 0.14em; margin-bottom: 7px; display: flex; align-items: center; gap: 6px; }
+.fav-label::after { content: ''; flex: 1; height: 1px; background: rgba(61,37,8,0.5); }
+
+/* RESPONSIVE */
+@media (max-width: 380px) {
+  .bcard-name { font-size: 14px; }
+  #main { padding: 11px 11px 0; }
+}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="h-icon">🥃</div>
+  <div class="h-title">BOURBON TRUTH SCANNER</div>
+  <div class="h-sub">Scan · Search · Verify</div>
+  <div class="stats-row" id="stats-row"></div>
+</div>
+
+<div id="main"></div>
+
+<div id="nav">
+  <button class="nav-btn active" onclick="switchTab(0)">
+    <span class="nav-icon">🔍</span><span class="nav-label">Scanner</span>
+  </button>
+  <button class="nav-btn" onclick="switchTab(1)">
+    <span class="nav-icon">📸</span><span class="nav-label">Camera</span>
+  </button>
+  <button class="nav-btn" onclick="switchTab(2)">
+    <span class="nav-icon">📋</span><span class="nav-label">Labels</span>
+  </button>
+  <button class="nav-btn" onclick="switchTab(3)">
+    <span class="nav-icon">🏢</span><span class="nav-label">Owners</span>
+  </button>
+  <button class="nav-btn" onclick="switchTab(4)">
+    <span class="nav-icon">💡</span><span class="nav-label">Buy Instead</span>
+  </button>
+  <button class="nav-btn" onclick="switchTab(5)">
+    <span class="nav-icon">🔄</span><span class="nav-label">Alt Finder</span>
+  </button>
+</div>
+
+<div id="cam-modal">
+  <div class="cam-instructions" id="cam-instructions">Point at a bottle label — AI reads it automatically</div>
+  <div id="cam-container">
+    <video id="cam-video" autoplay playsinline webkit-playsinline muted></video>
+    <canvas id="cam-canvas" style="display:none"></canvas>
+    <div id="cam-overlay">
+      <div class="scan-frame">
+        <div class="scan-frame-inner"></div>
+        <div class="scan-line"></div>
+      </div>
+    </div>
+  </div>
+  <!-- iOS fallback: native camera file picker - ALWAYS works on iOS -->
+  <div id="cam-fallback" style="display:none;text-align:center;padding:20px">
+    <div style="font-size:48px;margin-bottom:12px">📷</div>
+    <div style="color:#9e7c40;font-size:14px;margin-bottom:16px;line-height:1.6">Tap below to take a photo<br>of the bottle label</div>
+    <label id="cam-file-label" style="display:inline-block;padding:14px 28px;background:#1e1208;border:1.5px solid #c9943a;border-radius:30px;color:#c9943a;font-size:15px;cursor:pointer">
+      📸 Take Photo
+      <input type="file" accept="image/*" capture="environment" id="cam-file-input" style="display:none">
+    </label>
+  </div>
+  <div class="cam-status" id="cam-status">Starting camera…</div>
+  <button class="cam-close" onclick="closeCamera()">✕ Close</button>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════════════════════
+const CONGLOMERATES = {
+  "Diageo (UK)": { country:"🇬🇧", revenue:"$18B+", note:"World's largest spirits company. Owns Johnnie Walker, Guinness, Bulleit, George Dickel." },
+  "Suntory Global Spirits (Japan)": { country:"🇯🇵", revenue:"$6B+", note:"Bought Jim Beam for $16B in 2014. World's 3rd largest premium spirits company." },
+  "Brown-Forman (USA)": { country:"🇺🇸", revenue:"$4B+", note:"Publicly traded US company. Family-influenced board. Owns Woodford Reserve, Old Forester, Jack Daniel's." },
+  "Pernod Ricard (France)": { country:"🇫🇷", revenue:"$12B+", note:"2nd largest spirits globally. Owns Absolut, Jameson, Jefferson's, Smooth Ambler, Rabbit Hole." },
+  "Sazerac Company (USA)": { country:"🇺🇸", revenue:"Private", note:"Goldring family of New Orleans. 5th largest globally. Owns Buffalo Trace, Pappy Van Winkle, Fireball." },
+  "Heaven Hill Brands (USA)": { country:"🇺🇸", revenue:"Private", note:"Largest independent family-owned distillery in America. Shapira family since 1935." },
+  "Campari Group (Italy)": { country:"🇮🇹", revenue:"$3B+", note:"Italian spirits giant. Owns Campari, Aperol, Grand Marnier, Wild Turkey, Wilderness Trail." },
+  "Kirin Brewery (Japan)": { country:"🇯🇵", revenue:"$14B+", note:"Japanese beer/beverage giant. Has owned Four Roses since 2002." },
+  "MGP Ingredients (USA)": { country:"🇺🇸", revenue:"Public (MGPI)", note:"America's largest contract distillery. Supplies ~50+ brands. Owns Lux Row, Ross & Squibb." },
+  "Bacardi (Private)": { country:"🇧🇸", revenue:"Private", note:"Family-owned, Bermuda-based. Owns Angel's Envy, Grey Goose, Patron." },
+  "Constellation Brands (USA)": { country:"🇺🇸", revenue:"$10B+", note:"Publicly traded. Known for Corona beer. Owns High West Distillery." },
+  "Independent / Family-Owned": { country:"🇺🇸", revenue:"Private", note:"No major conglomerate parent. Privately held." },
+  "Chatham Imports (USA)": { country:"🇺🇸", revenue:"Private", note:"Private importer/producer. Operates Michter's Fort Nelson Distillery in Louisville." },
+  "Proximo Spirits (USA)": { country:"🇺🇸", revenue:"Private", note:"Private spirits company. Owns Jose Cuervo, Stranahan's, Tin Cup." },
+  "Molson Coors (USA/Canada)": { country:"🇺🇸", revenue:"$10B+", note:"Beer giant. Owns Blue Run Spirits as part of whiskey expansion." },
+  "WhistlePig LLC (private equity)": { country:"🇺🇸", revenue:"Private", note:"Private equity backed. VT farm, Canadian source whiskey." },
+  "Deutsch Family Wine & Spirits": { country:"🇺🇸", revenue:"Private", note:"Family importers. Owns Redemption, Yellow Tail wine." },
+  "Samson & Surrey (private)": { country:"🇺🇸", revenue:"Private", note:"Private holding company. Owns Widow Jane and other craft brands." },
+  "Templeton Rye Spirits": { country:"🇺🇸", revenue:"Private", note:"Iowa-based. Settled class action for misleading Prohibition-era origin story." },
+  "Barrell Craft Spirits (private)": { country:"🇺🇸", revenue:"Private", note:"Highly respected independent blending operation. Transparent NDP." },
+  "James E. Pepper Distillery": { country:"🇺🇸", revenue:"Private", note:"Historic brand revived in Lexington, KY. Mixed production." },
+};
+
+const COLOR = {
+  "Suntory Global Spirits (Japan)":"#e67e22","Diageo (UK)":"#8e44ad","Brown-Forman (USA)":"#2980b9",
+  "Pernod Ricard (France)":"#16a085","Sazerac Company (USA)":"#c0392b","Heaven Hill Brands (USA)":"#27ae60",
+  "Campari Group (Italy)":"#e74c3c","Kirin Brewery (Japan)":"#f39c12","MGP Ingredients (USA)":"#7f8c8d",
+  "Bacardi (Private)":"#1abc9c","Constellation Brands (USA)":"#9b59b6","Independent / Family-Owned":"#2ecc71",
+  "Chatham Imports (USA)":"#3498db","Proximo Spirits (USA)":"#d35400","Molson Coors (USA/Canada)":"#f39c12",
+};
+
+const BRANDS = [
+  {brand:"Buffalo Trace",maker:"Buffalo Trace Distillery",loc:"Frankfort, KY",parent:"Sazerac Company (USA)",sourced:false,verdict:"legit",price:"$30–$35",pts:93,notes:"One of America's most decorated distilleries. Produces 40+ brands: Blanton's, Weller, Eagle Rare, E.H. Taylor, Pappy. Legitimately grain-to-glass.",tags:["🏆 Award-Winning","🔑 Single Barrel Available"],alts:[]},
+  {brand:"Blanton's Single Barrel",maker:"Buffalo Trace Distillery",loc:"Frankfort, KY",parent:"Sazerac Company (USA)",sourced:false,verdict:"legit",price:"$65 MSRP",pts:93,notes:"World's first commercially sold single-barrel bourbon (1984). Legitimately crafted. Buy at MSRP only — secondary prices are inflated.",tags:["🔑 Single Barrel","💎 Allocated"],alts:[]},
+  {brand:"Eagle Rare 10yr",maker:"Buffalo Trace Distillery",loc:"Frankfort, KY",parent:"Sazerac Company (USA)",sourced:false,verdict:"legit",price:"$35 MSRP",pts:90,notes:"10-year age-stated single barrel at Buffalo Trace. Consistently excellent value at MSRP.",tags:["🔑 Single Barrel","📅 Age Stated"],alts:[]},
+  {brand:"W.L. Weller",maker:"Buffalo Trace Distillery",loc:"Frankfort, KY",parent:"Sazerac Company (USA)",sourced:false,verdict:"legit",price:"$25 MSRP",pts:88,notes:"Wheated bourbon, same mashbill family as Pappy Van Winkle. Called 'budget Pappy.' Legitimately made.",tags:["🌾 Wheated","💰 Value"],alts:[]},
+  {brand:"E.H. Taylor Jr.",maker:"Buffalo Trace Distillery",loc:"Frankfort, KY",parent:"Sazerac Company (USA)",sourced:false,verdict:"legit",price:"$40–$70 MSRP",pts:93,notes:"Named for the father of the Bottled-in-Bond Act. Legitimately distilled. Small Batch, Single Barrel, Barrel Proof expressions.",tags:["🏆 Bottled-in-Bond","💎 Allocated"],alts:[]},
+  {brand:"Benchmark",maker:"Buffalo Trace Distillery",loc:"Frankfort, KY",parent:"Sazerac Company (USA)",sourced:false,verdict:"legit",price:"$10–$15",pts:78,notes:"Buffalo Trace's budget line. Same distillery as Blanton's and Pappy. Remarkable value.",tags:["💰 Budget Gem"],alts:[]},
+  {brand:"1792 Bourbon",maker:"Barton 1792 Distillery",loc:"Bardstown, KY",parent:"Sazerac Company (USA)",sourced:false,verdict:"legit",price:"$30–$40",pts:87,notes:"Named for the year KY achieved statehood. Distilled at Barton 1792 (Sazerac-owned). High-rye mashbill.",tags:["🌶️ High Rye"],alts:[]},
+  {brand:"Very Old Barton",maker:"Barton 1792 Distillery",loc:"Bardstown, KY",parent:"Sazerac Company (USA)",sourced:false,verdict:"legit",price:"$12–$18",pts:82,notes:"Cult favorite value bourbon from Barton 1792. Legitimately distilled, incredible QPR.",tags:["💰 Budget Gem"],alts:[]},
+  {brand:"Jim Beam",maker:"James B. Beam Distilling Co.",loc:"Clermont, KY",parent:"Suntory Global Spirits (Japan)",sourced:false,verdict:"legit",price:"$20–$25",pts:78,notes:"America's best-selling bourbon. Japanese-owned since 2014 ($16B). Legitimately distilled in Clermont, KY.",tags:["🇯🇵 Foreign-Owned"],alts:[]},
+  {brand:"Knob Creek",maker:"James B. Beam Distilling Co.",loc:"Clermont, KY",parent:"Suntory Global Spirits (Japan)",sourced:false,verdict:"legit",price:"$35–$45",pts:90,notes:"Full-flavored small batch. 9-year age statement. Legitimately distilled.",tags:["🇯🇵 Foreign-Owned","📅 Age Stated"],alts:[]},
+  {brand:"Booker's",maker:"James B. Beam Distilling Co.",loc:"Clermont, KY",parent:"Suntory Global Spirits (Japan)",sourced:false,verdict:"legit",price:"$70–$90",pts:94,notes:"Uncut, unfiltered barrel-strength named for Booker Noe. One of the original small-batch bourbons. Legitimately distilled.",tags:["🇯🇵 Foreign-Owned","💪 Cask Strength"],alts:[]},
+  {brand:"Basil Hayden's",maker:"James B. Beam Distilling Co.",loc:"Clermont, KY",parent:"Suntory Global Spirits (Japan)",sourced:false,verdict:"legit",price:"$40–$50",pts:84,notes:"High-rye mashbill, lighter style. Legitimately distilled at Beam's Clermont distillery.",tags:["🇯🇵 Foreign-Owned","🌶️ High Rye"],alts:[]},
+  {brand:"Baker's",maker:"James B. Beam Distilling Co.",loc:"Clermont, KY",parent:"Suntory Global Spirits (Japan)",sourced:false,verdict:"legit",price:"$45–$55",pts:87,notes:"Named for Baker Beam. 7-year age statement. Legitimately distilled. Underappreciated.",tags:["🇯🇵 Foreign-Owned","📅 Age Stated"],alts:[]},
+  {brand:"Old Grand-Dad",maker:"James B. Beam Distilling Co.",loc:"Clermont, KY",parent:"Suntory Global Spirits (Japan)",sourced:false,verdict:"legit",price:"$20–$30",pts:84,notes:"High-rye legend. The Bonded 100-proof is a spectacular value. Legitimately distilled.",tags:["🇯🇵 Foreign-Owned","💰 Value","🌶️ High Rye"],alts:[]},
+  {brand:"Old Overholt",maker:"James B. Beam Distilling Co.",loc:"Clermont, KY",parent:"Suntory Global Spirits (Japan)",sourced:false,verdict:"legit",price:"$18–$22",pts:78,notes:"America's oldest continuously operating whiskey brand (est. 1810). Rye whiskey. Legitimately distilled.",tags:["🇯🇵 Foreign-Owned","🌾 Rye"],alts:[]},
+  {brand:"Maker's Mark",maker:"Maker's Mark Distillery",loc:"Loretto, KY",parent:"Suntory Global Spirits (Japan)",sourced:false,verdict:"legit",price:"$30–$35",pts:86,notes:"Wheat-forward recipe by Bill Samuels Sr. Japanese-owned but the Loretto distillery is 100% hands-on. Red wax still hand-dipped.",tags:["🇯🇵 Foreign-Owned","🌾 Wheated"],alts:[]},
+  {brand:"Legent",maker:"James B. Beam Distilling Co.",loc:"Clermont, KY",parent:"Suntory Global Spirits (Japan)",sourced:false,verdict:"legit",price:"$35–$40",pts:88,notes:"Collaboration between Fred Noe (Beam) and Shinji Fukuyo (Suntory). Bourbon finished in wine and sherry casks. Legitimately distilled.",tags:["🇯🇵 Japanese Collab","🍷 Wine Finished"],alts:[]},
+  {brand:"Elijah Craig Small Batch",maker:"Heaven Hill Distillery",loc:"Bardstown, KY",parent:"Heaven Hill Brands (USA)",sourced:false,verdict:"legit",price:"$30–$35",pts:90,notes:"Named for the Baptist preacher credited with inventing bourbon. One of America's best value bottles. Family-owned, legitimately distilled.",tags:["🏆 Top Value","👨‍👩‍👧‍👦 Family-Owned"],alts:[]},
+  {brand:"Elijah Craig Barrel Proof",maker:"Heaven Hill Distillery",loc:"Bardstown, KY",parent:"Heaven Hill Brands (USA)",sourced:false,verdict:"legit",price:"$65–$75",pts:96,notes:"Three releases/year (A, B, C batches). Consistently scores 95+. Among the best bourbons in America for the price.",tags:["💪 Cask Strength","🏆 Award-Winning","👨‍👩‍👧‍👦 Family-Owned"],alts:[]},
+  {brand:"Larceny",maker:"Heaven Hill Distillery",loc:"Bardstown, KY",parent:"Heaven Hill Brands (USA)",sourced:false,verdict:"legit",price:"$28–$32",pts:88,notes:"John E. Fitzgerald wheated bourbon. Legitimately distilled by family-owned Heaven Hill.",tags:["🌾 Wheated","👨‍👩‍👧‍👦 Family-Owned"],alts:[]},
+  {brand:"Evan Williams BiB",maker:"Heaven Hill Distillery",loc:"Bardstown, KY",parent:"Heaven Hill Brands (USA)",sourced:false,verdict:"legit",price:"$14–$18",pts:82,notes:"America's 2nd best-selling bourbon. The Bottled-in-Bond is a legendary $18 value. Legitimately distilled.",tags:["💰 Budget Gem","👨‍👩‍👧‍👦 Family-Owned"],alts:[]},
+  {brand:"Henry McKenna 10yr BiB",maker:"Heaven Hill Distillery",loc:"Bardstown, KY",parent:"Heaven Hill Brands (USA)",sourced:false,verdict:"legit",price:"$35–$40",pts:91,notes:"Won Best in Show at 2019 SF World Spirits Competition. 10-year single barrel bottled-in-bond. Incredible value.",tags:["🏆 Award-Winning","📅 Age Stated","🔑 Single Barrel"],alts:[]},
+  {brand:"Fighting Cock",maker:"Heaven Hill Distillery",loc:"Bardstown, KY",parent:"Heaven Hill Brands (USA)",sourced:false,verdict:"legit",price:"$18–$22",pts:80,notes:"103 proof, legitimately distilled value bourbon from Heaven Hill. Criminally underrated.",tags:["💰 Budget Gem","👨‍👩‍👧‍👦 Family-Owned"],alts:[]},
+  {brand:"Old Fitzgerald",maker:"Heaven Hill Distillery",loc:"Bardstown, KY",parent:"Heaven Hill Brands (USA)",sourced:false,verdict:"legit",price:"$70–$90 (BiB)",pts:92,notes:"Legendary wheated bourbon originally from Stitzel-Weller. Now Heaven Hill. BiB decanter releases are highly sought.",tags:["🌾 Wheated","💎 Allocated","👨‍👩‍👧‍👦 Family-Owned"],alts:[]},
+  {brand:"Rittenhouse Rye",maker:"Heaven Hill Distillery",loc:"Bardstown, KY",parent:"Heaven Hill Brands (USA)",sourced:false,verdict:"legit",price:"$22–$28",pts:89,notes:"Bottled-in-Bond rye at 100 proof. Best cocktail rye in America. Legitimately distilled by family-owned Heaven Hill.",tags:["💰 Top Value","🍸 Best Cocktail Rye","👨‍👩‍👧‍👦 Family-Owned"],alts:[]},
+  {brand:"Woodford Reserve",maker:"Woodford Reserve Distillery",loc:"Versailles, KY",parent:"Brown-Forman (USA)",sourced:false,verdict:"legit",price:"$35–$45",pts:90,notes:"Triple pot-still distillation at historic Labrot & Graham distillery (est. 1812). Legitimately distilled on-site.",tags:["🇺🇸 US-Owned","🏺 Pot Still"],alts:[]},
+  {brand:"Old Forester 1920",maker:"Old Forester Distillery",loc:"Louisville, KY",parent:"Brown-Forman (USA)",sourced:false,verdict:"legit",price:"$55–$65",pts:94,notes:"America's first bottled bourbon brand (1870). The 1920 Prohibition Style is barrel proof and exceptional. Legitimately distilled on Whiskey Row.",tags:["🇺🇸 US-Owned","💪 Cask Strength"],alts:[]},
+  {brand:"Jack Daniel's",maker:"Jack Daniel's Distillery",loc:"Lynchburg, TN",parent:"Brown-Forman (USA)",sourced:false,verdict:"legit",price:"$25–$30",pts:80,notes:"Tennessee Whiskey (not bourbon — Lincoln County Process charcoal filtering). Brown-Forman owned. Legitimately distilled.",tags:["🇺🇸 US-Owned","🍦 Tennessee Whiskey"],alts:[]},
+  {brand:"Four Roses Small Batch",maker:"Four Roses Distillery",loc:"Lawrenceburg, KY",parent:"Kirin Brewery (Japan)",sourced:false,verdict:"legit",price:"$35–$40",pts:91,notes:"10 unique recipes (2 mashbills × 5 yeast strains). Owned by Kirin but legitimately distilled with remarkable complexity.",tags:["🇯🇵 Foreign-Owned","🏆 Award-Winning"],alts:[]},
+  {brand:"Four Roses Single Barrel",maker:"Four Roses Distillery",loc:"Lawrenceburg, KY",parent:"Kirin Brewery (Japan)",sourced:false,verdict:"legit",price:"$45–$55",pts:93,notes:"High-rye OBSV recipe single barrel. Among the most consistently excellent single barrels available.",tags:["🇯🇵 Foreign-Owned","🔑 Single Barrel","🌶️ High Rye"],alts:[]},
+  {brand:"Wild Turkey 101",maker:"Wild Turkey Distillery",loc:"Lawrenceburg, KY",parent:"Campari Group (Italy)",sourced:false,verdict:"legit",price:"$25–$30",pts:88,notes:"Italian-owned (Campari 2009), but Master Distiller Eddie Russell built a genuine legacy. 101 proof is one of the best bourbon values. Legitimately distilled.",tags:["🇮🇹 Foreign-Owned","💰 Top Value"],alts:[]},
+  {brand:"Russell's Reserve",maker:"Wild Turkey Distillery",loc:"Lawrenceburg, KY",parent:"Campari Group (Italy)",sourced:false,verdict:"legit",price:"$45–$55",pts:92,notes:"Eddie Russell's personal label. 10-year age statement, single barrel option. Legitimately distilled.",tags:["🇮🇹 Foreign-Owned","📅 Age Stated","🔑 Single Barrel Available"],alts:[]},
+  {brand:"Rare Breed",maker:"Wild Turkey Distillery",loc:"Lawrenceburg, KY",parent:"Campari Group (Italy)",sourced:false,verdict:"legit",price:"$40–$50",pts:91,notes:"Barrel-proof blend of 6, 8, and 12-year Wild Turkey. Uncut and unfiltered. Legitimately distilled.",tags:["🇮🇹 Foreign-Owned","💪 Cask Strength"],alts:[]},
+  {brand:"Wilderness Trail",maker:"Wilderness Trail Distillery",loc:"Danville, KY",parent:"Campari Group (Italy)",sourced:false,verdict:"legit",price:"$50–$70",pts:92,notes:"Genuinely craft grain-to-glass, acquired by Campari (2022). Still distilled on-site. Unique sweet mash process.",tags:["🇮🇹 Foreign-Owned","🔬 Craft"],alts:[]},
+  {brand:"George Remus",maker:"Ross & Squibb Distillery (MGP)",loc:"Lawrenceburg, IN",parent:"MGP Ingredients (USA)",sourced:false,verdict:"legit",price:"$40–$55",pts:88,notes:"MGP's own flagship bourbon — transparent about source. Named for the real bootlegger who inspired The Great Gatsby. Legitimately distilled.",tags:["🏭 MGP Own Brand"],alts:[]},
+  {brand:"Ezra Brooks",maker:"Lux Row Distillers (MGP-owned)",loc:"Bardstown, KY",parent:"MGP Ingredients (USA)",sourced:false,verdict:"legit",price:"$25–$35",pts:84,notes:"Now distilled at MGP's Lux Row Distillery in Kentucky after Luxco acquisition ($475M, 2021). Formerly sourced.",tags:["🏭 MGP-Owned Distillery"],alts:[]},
+  {brand:"Rebel Bourbon",maker:"Lux Row Distillers (MGP-owned)",loc:"Bardstown, KY",parent:"MGP Ingredients (USA)",sourced:false,verdict:"legit",price:"$25–$35",pts:83,notes:"Wheated bourbon from MGP's Lux Row. Formerly sourced (Rebel Yell), now in-house production.",tags:["🏭 MGP-Owned Distillery","🌾 Wheated"],alts:[]},
+  {brand:"Bulleit Bourbon",maker:"Four Roses Distillery",loc:"Lawrenceburg, KY",parent:"Diageo (UK)",sourced:true,verdict:"sourced",price:"$30–$35",pts:82,notes:"Frontier marketing, but bourbon is made at Four Roses. Diageo — world's largest spirits conglomerate — just bottles and sells it.",tags:["🚨 NDP","🇬🇧 UK Conglomerate"],alts:["Four Roses Small Batch","Knob Creek","Wild Turkey 101"]},
+  {brand:"Bulleit Rye",maker:"MGP of Indiana",loc:"Lawrenceburg, IN",parent:"Diageo (UK)",sourced:true,verdict:"sourced",price:"$30–$35",pts:82,notes:"The famous 95% rye mash bill from MGP Indiana. Same factory juice as dozens of other brands.",tags:["🚨 NDP","🇬🇧 UK Conglomerate"],alts:["Rittenhouse Rye","High West Double Rye"]},
+  {brand:"Templeton Rye",maker:"MGP of Indiana",loc:"Lawrenceburg, IN",parent:"Templeton Rye Spirits",sourced:true,verdict:"sourced",price:"$35–$45",pts:79,notes:"SUED in 2015 for falsely claiming a Prohibition-era Iowa recipe. Actually MGP Indiana. Court required 'Distilled in Indiana' on label.",tags:["🚨 NDP","⚖️ Class Action Settlement"],alts:["High West Double Rye","Rittenhouse Rye"]},
+  {brand:"Redemption Bourbon",maker:"MGP of Indiana",loc:"Lawrenceburg, IN",parent:"Deutsch Family Wine & Spirits",sourced:true,verdict:"sourced",price:"$25–$35",pts:80,notes:"Sourced from MGP Indiana. The 'redemption' branding is marketing, not craft production.",tags:["🚨 NDP"],alts:["Elijah Craig Small Batch","Benchmark"]},
+  {brand:"Angel's Envy",maker:"MGP Indiana (base) + Louisville finishing",loc:"Louisville, KY",parent:"Bacardi (Private)",sourced:true,verdict:"mixed",price:"$45–$55",pts:88,notes:"Sources base whiskey from MGP Indiana, finishes in port wine casks in Louisville. Bacardi-owned. The finishing adds real complexity but it's not grain-to-glass.",tags:["⚗️ Sourced + Finished","🍷 Port Finished"],alts:["Woodford Reserve","Michter's US*1","Legent"]},
+  {brand:"Jefferson's Bourbon",maker:"Various sourced distilleries",loc:"Louisville, KY (blending)",parent:"Pernod Ricard (France)",sourced:true,verdict:"sourced",price:"$35–$55",pts:83,notes:"Acquired by Pernod Ricard (France). Primarily a blender/NDP. There is no Jefferson's distillery.",tags:["🚨 NDP","🇫🇷 French-Owned"],alts:["Four Roses Small Batch","Russell's Reserve"]},
+  {brand:"Widow Jane",maker:"Various (KY & IN sources)",loc:"Red Hook, Brooklyn, NY",parent:"Samson & Surrey (private)",sourced:true,verdict:"sourced",price:"$65–$80",pts:82,notes:"Markets Brooklyn location and Widow Jane Mine water. Bourbon sourced from unnamed KY and IN producers. You're paying for a zip code.",tags:["🚨 NDP","🗽 Geography Marketing"],alts:["Kings County Distillery","Elijah Craig Small Batch"]},
+  {brand:"WhistlePig 10yr",maker:"Alberta Distillers, Canada",loc:"Shoreham, VT (farm)",parent:"WhistlePig LLC (private equity)",sourced:true,verdict:"sourced",price:"$70–$85",pts:91,notes:"Original 10yr rye sourced from Alberta Distillers in CANADA, not Vermont. Farm distillery opened 2015 but older expressions remain Canadian.",tags:["🚨 NDP","🍁 Sourced from Canada","🐷 Geography Marketing"],alts:["Barrell Bourbon","High West Double Rye"]},
+  {brand:"High West Double Rye",maker:"Various (own + sourced)",loc:"Park City, UT",parent:"Constellation Brands (USA)",sourced:true,verdict:"mixed",price:"$35–$45",pts:89,notes:"Transparency heroes — they disclose sourcing on labels. Blend of own-distilled and sourced. Constellation Brands (Corona beer) owned. Blending is genuine craft here.",tags:["⚗️ Blended","✅ Transparent NDP"],alts:["Rittenhouse Rye","Knob Creek"]},
+  {brand:"Smooth Ambler Old Scout",maker:"MGP of Indiana (barrels)",loc:"Maxwelton, WV",parent:"Pernod Ricard (France)",sourced:true,verdict:"sourced",price:"$45–$60",pts:86,notes:"Old Scout expressions were sourced MGP barrels. Acquired by French giant Pernod Ricard. Own-distillery production now underway.",tags:["🚨 NDP","🇫🇷 French-Owned"],alts:["George Remus","Knob Creek"]},
+  {brand:"George Dickel Rye",maker:"MGP of Indiana",loc:"Lawrenceburg, IN",parent:"Diageo (UK)",sourced:true,verdict:"sourced",price:"$25–$30",pts:83,notes:"Tennessee brand's bourbon is legitimately distilled at Cascade Hollow. The rye is entirely from MGP Indiana — same factory as Bulleit Rye.",tags:["🚨 NDP (rye only)","🇬🇧 UK Conglomerate"],alts:["Rittenhouse Rye","Old Overholt"]},
+  {brand:"Tin Cup",maker:"MGP Indiana + Stranahan's blend",loc:"Denver, CO",parent:"Proximo Spirits (USA)",sourced:true,verdict:"sourced",price:"$30–$35",pts:82,notes:"Uses sourced MGP bourbon blended with Colorado whiskey. Colorado mountain imagery is marketing.",tags:["🚨 NDP","🏔️ Geography Marketing"],alts:["Elijah Craig Small Batch","Wild Turkey 101"]},
+  {brand:"James E. Pepper 1776",maker:"MGP of Indiana (flagship)",loc:"Lawrenceburg, IN",parent:"James E. Pepper Distillery",sourced:true,verdict:"sourced",price:"$35–$50",pts:83,notes:"The 1776 flagship is sourced from MGP. The brand has a Lexington, KY distillery for some expressions — check the label.",tags:["🚨 NDP (flagship)"],alts:["Elijah Craig Small Batch","Wild Turkey 101"]},
+  {brand:"Barrell Bourbon",maker:"Various (KY, TN sources)",loc:"Louisville, KY (blending)",parent:"Barrell Craft Spirits (private)",sourced:true,verdict:"mixed",price:"$80–$110",pts:94,notes:"TRANSPARENT NDP — discloses sourcing on every label. Expert blenders. Consistently among the best whiskeys in America. Proves NDPs can be excellent.",tags:["✅ Transparent NDP","🏆 Award-Winning"],alts:[]},
+  {brand:"Blue Run Spirits",maker:"Bardstown Bourbon Co. (contract)",loc:"Georgetown, KY (planned)",parent:"Molson Coors (USA/Canada)",sourced:true,verdict:"sourced",price:"$60–$90",pts:87,notes:"Grew 300%/year then sold to Molson Coors (beer conglomerate) in 2023. Contract distilled. High concept packaging.",tags:["🚨 NDP","🍺 Beer Co. Owned"],alts:["Barrell Bourbon","Four Roses Small Batch"]},
+  {brand:"Willett Pot Still Reserve",maker:"Willett Distillery",loc:"Bardstown, KY",parent:"Independent / Family-Owned",sourced:false,verdict:"legit",price:"$40–$50",pts:87,notes:"Iconic bottle shaped like a pot still. Distilling resumed 2012. Legitimately family-owned Kulsveen family.",tags:["👨‍👩‍👧‍👦 Family-Owned","🏺 Iconic Bottle"],alts:[]},
+  {brand:"Noah's Mill",maker:"Willett Distillery",loc:"Bardstown, KY",parent:"Independent / Family-Owned",sourced:false,verdict:"legit",price:"$40–$50",pts:87,notes:"114.3 proof non-chill-filtered from family-owned Willett. Rich and powerful.",tags:["👨‍👩‍👧‍👦 Family-Owned","💪 High Proof"],alts:[]},
+  {brand:"Michter's US*1",maker:"Michter's Fort Nelson / Shively",loc:"Louisville, KY",parent:"Chatham Imports (USA)",sourced:false,verdict:"legit",price:"$45–$55",pts:90,notes:"Used to source, now operates two Louisville distilleries. Legitimately distilled. Toasted Barrel Finish is outstanding.",tags:["🏙️ Louisville Craft"],alts:[]},
+  {brand:"New Riff Bottled-in-Bond",maker:"New Riff Distilling",loc:"Newport, KY",parent:"Independent / Family-Owned",sourced:false,verdict:"legit",price:"$45–$55",pts:92,notes:"Small independent craft distillery. Grain-to-glass, non-chill filtered, bottled in bond. One of America's most exciting new distilleries.",tags:["✅ Fully Transparent","🔑 Bottled-in-Bond","🔬 Craft"],alts:[]},
+  {brand:"Garrison Brothers",maker:"Garrison Brothers Distillery",loc:"Hye, TX",parent:"Independent / Family-Owned",sourced:false,verdict:"legit",price:"$70–$90",pts:90,notes:"Texas's first legal bourbon distillery. Grain-to-glass, estate-grown TX corn and wheat. Legitimately small-batch.",tags:["🤠 Texas Craft","🌾 Estate Grain","👨‍👩‍👧‍👦 Family-Owned"],alts:[]},
+  {brand:"Kings County Distillery",maker:"Kings County Distillery",loc:"Brooklyn, NY",parent:"Independent / Family-Owned",sourced:false,verdict:"legit",price:"$40–$65",pts:88,notes:"NYC's oldest operating distillery since Prohibition. Actually distills in Brooklyn — unlike Widow Jane. Grain-to-glass craft.",tags:["🗽 Actual Brooklyn Craft","🔬 Independent"],alts:[]},
+  {brand:"Bardstown Bourbon Company",maker:"Bardstown Bourbon Company",loc:"Bardstown, KY",parent:"Independent / Family-Owned",sourced:false,verdict:"legit",price:"$55–$85",pts:92,notes:"Major contract distillery AND own brand. Legitimately distilled. Collaborative Series expressions are outstanding.",tags:["🔬 Craft","🤝 Collaborative"],alts:[]},
+  {brand:"Castle & Key",maker:"Castle & Key Distillery",loc:"Millville, KY",parent:"Independent / Family-Owned",sourced:false,verdict:"legit",price:"$55–$75",pts:88,notes:"Located at the historic Old Taylor distillery (est. 1887). Legitimately grain-to-glass. Sacred Spring Bourbon is own-distilled.",tags:["🏰 Historic Distillery","🔬 Craft"],alts:[]},
+  {brand:"Stranahan's Colorado Whiskey",maker:"Stranahan's Distillery",loc:"Denver, CO",parent:"Proximo Spirits (USA)",sourced:false,verdict:"legit",price:"$55–$65",pts:89,notes:"American single malt (100% malted barley). Legitimately distilled in Denver. Proximo-owned but genuine craft.",tags:["🏔️ Colorado Craft","🌾 American Single Malt"],alts:[]},
+  {brand:"Rabbit Hole",maker:"Rabbit Hole Distillery",loc:"Louisville, KY",parent:"Pernod Ricard (France)",sourced:false,verdict:"legit",price:"$50–$60",pts:89,notes:"Founder Casey Lipp built a legit grain-to-glass Louisville distillery. Acquired by Pernod Ricard 2019. Still distilled on-site.",tags:["🇫🇷 French-Owned","🏙️ Louisville Craft"],alts:[]},
+  {brand:"George Dickel No. 12",maker:"Cascade Hollow Distillery",loc:"Tullahoma, TN",parent:"Diageo (UK)",sourced:false,verdict:"legit",price:"$22–$28",pts:84,notes:"Tennessee Whiskey legitimately distilled at Cascade Hollow. Diageo-owned. Only the rye is sourced from MGP.",tags:["🇬🇧 UK-Owned","🍦 Tennessee Whiskey"],alts:[]},
+  {brand:"Balcones Texas Pot Still",maker:"Balcones Distilling",loc:"Waco, TX",parent:"Diageo (UK)",sourced:false,verdict:"legit",price:"$45–$65",pts:93,notes:"Acquired by Diageo 2022. Legitimately craft-distilled using blue corn and pot stills in Waco, TX. One of America's most innovative distilleries.",tags:["🇬🇧 UK-Owned","🤠 Texas Craft","🏺 Pot Still"],alts:[]},
+];
+
+const LABEL_CLUES = [
+  {q:'"Distilled by" + same brand name',a:'✅ They actually made it',safe:true},
+  {q:'"Bottled by" + brand name',a:'🚨 Someone else made it — they just bottled it',safe:false},
+  {q:'"Distilled in Indiana"',a:'🚨 MGP of Indiana — factory sourced',safe:false},
+  {q:'"DSP-IN-[number]" on label',a:'🚨 Distilled in Indiana — likely MGP',safe:false},
+  {q:'"Produced by" + brand name',a:'⚠️ Vague — could mean bottled, blended, or sourced',safe:null},
+  {q:'No distillery address on back label',a:'🚨 Red flag — hiding where it was made',safe:false},
+  {q:'"Small Batch" with no barrel count',a:'⚠️ Legally meaningless marketing term',safe:null},
+  {q:'"Handcrafted" or "Artisanal"',a:'⚠️ Also legally meaningless — anyone can print this',safe:null},
+  {q:'Age statement (e.g. "10 Year")',a:'✅ Good sign — they had to age it themselves',safe:true},
+  {q:'"Bottled in Bond"',a:'✅ Legal: 4yr age, 100 proof, single distillery, single season',safe:true},
+  {q:'"Straight Bourbon"',a:'✅ Aged 2+ years, new charred oak, nothing added',safe:true},
+  {q:'95% rye listed on mashbill',a:'🚨 Almost certainly MGP Indiana — their signature rye',safe:false},
+  {q:'Romantic backstory about founder/family/town',a:'🚨 Often invented — Google: brand + "NDP" or "MGP"',safe:false},
+  {q:'"DSP-KY-[number]"',a:'✅ Kentucky distillery code — look up at TTB.gov',safe:true},
+  {q:'"Whiskey" (not Straight)',a:'⚠️ Could have added coloring or flavoring',safe:null},
+];
+
+const SWAPS = {
+  "Bulleit Bourbon":["Four Roses Small Batch","Knob Creek","Wild Turkey 101"],
+  "Bulleit Rye":["Rittenhouse Rye","High West Double Rye","New Riff Bottled-in-Bond"],
+  "Templeton Rye":["Rittenhouse Rye","High West Double Rye","Barrell Bourbon"],
+  "Redemption Bourbon":["Elijah Craig Small Batch","Benchmark","Evan Williams BiB"],
+  "Angel's Envy":["Woodford Reserve","Michter's US*1","Legent"],
+  "Jefferson's Bourbon":["Four Roses Small Batch","Russell's Reserve","Woodford Reserve"],
+  "Widow Jane":["Kings County Distillery","New Riff Bottled-in-Bond","Elijah Craig Small Batch"],
+  "WhistlePig 10yr":["Barrell Bourbon","High West Double Rye","Willett Pot Still Reserve"],
+  "High West Double Rye":["Rittenhouse Rye","Knob Creek","New Riff Bottled-in-Bond"],
+  "Smooth Ambler Old Scout":["George Remus","Knob Creek","Elijah Craig Small Batch"],
+  "George Dickel Rye":["Rittenhouse Rye","Old Overholt","Jim Beam"],
+  "Tin Cup":["Elijah Craig Small Batch","Wild Turkey 101","Benchmark"],
+  "James E. Pepper 1776":["Elijah Craig Small Batch","Wild Turkey 101","New Riff Bottled-in-Bond"],
+  "Blue Run Spirits":["Barrell Bourbon","Four Roses Small Batch","Bardstown Bourbon Company"],
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════════
+let currentTab = 0;
+let searchQuery = '';
+let filterMode = 'all';
+let openCard = null;
+let ownerFilter = 'all';
+let cameraStream = null;
+let cameraContext = 'scanner'; // 'scanner' | 'buyInstead' | 'altFinder'
+let aiResults = {};
+let buyAiResults = {}; // brand -> { loading, text }
+let favorites = [];
+let recentlyViewed = [];
+
+let altQuery = '';
+let altSelectedBrand = null;
+let altBudget = 'any';
+let altFlavor = 'any';
+let altAiResult = null;
+let altAiLoading = false;
+let labelCaptureInterval = null;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════════════
+function e(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function getBrand(n){ return BRANDS.find(b=>b.brand===n); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function vibrate(pattern) {
+  if(navigator.vibrate) navigator.vibrate(pattern);
+}
+
+function addToRecent(brandName) {
+  recentlyViewed = [brandName, ...recentlyViewed.filter(n=>n!==brandName)].slice(0,6);
+}
+
+function toggleFavorite(brandName) {
+  if(favorites.includes(brandName)) {
+    favorites = favorites.filter(n=>n!==brandName);
+    showToast('Removed from favorites');
+  } else {
+    favorites.push(brandName);
+    showToast('⭐ Added to favorites');
+    vibrate([10, 50, 10]);
+  }
+  render();
+}
+
+function buildStatsRow() {
+  const legit  = BRANDS.filter(b=>b.verdict==='legit').length;
+  const sourced = BRANDS.filter(b=>b.verdict==='sourced').length;
+  const mixed  = BRANDS.filter(b=>b.verdict==='mixed').length;
+  return `<span class="stat-chip legit">✅ ${legit} Legit</span>
+          <span class="stat-chip sourced">🚨 ${sourced} NDP</span>
+          <span class="stat-chip mixed">⚠️ ${mixed} Mixed</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// AI LOOKUP
+// ═══════════════════════════════════════════════════════════════════════════
+function lookupBrandByName(name) {
+  const b = getBrand(name);
+  if(b) lookupBrand(b);
+}
+
+async function lookupBrand(brand) {
+  brand = typeof brand === 'string' ? getBrand(brand) : brand;
+  if(!brand) return;
+  const key = brand.brand;
+  const safeId = 'ai-' + key.replace(/\s+/g,'_').replace(/[^a-z0-9_]/gi,'');
+  const el = document.getElementById(safeId);
+  if(!el) return;
+  el.innerHTML = '<div class="ai-result"><div class="ai-loading">Searching latest info on ' + e(key) + '…</div></div>';
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: `You are a bourbon industry expert. Search the web for the most current information about this bourbon brand: who actually distills it, current ownership, whether it's NDP/sourced, any recent news or acquisitions, and current pricing. Be concise (150 words max). Start directly with findings, no preamble. Use plain text, no markdown.`,
+        messages: [{ role: 'user', content: `Search for current information about: ${key} bourbon whiskey. Who makes it, who owns it, is it sourced or distilled, any recent news?` }]
+      })
+    });
+    const data = await resp.json();
+    const text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('\n').trim();
+    aiResults[key] = text || 'No additional information found.';
+    el.innerHTML = `<div class="ai-result" style="border-color:rgba(201,148,58,0.3)">
+      <span class="ai-label">🔍 Live Web Search Results</span>
+      ${e(aiResults[key]).replace(/\n/g,'<br>')}
+    </div>`;
+  } catch(err) {
+    el.innerHTML = `<div class="ai-result" style="border-color:rgba(232,68,68,0.2);color:var(--sourced)">Unable to fetch live data. Check network connection.</div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// CAMERA / BARCODE
+// ═══════════════════════════════════════════════════════════════════════════
+function openCamera(context) {
+  cameraContext = context || 'scanner';
+  document.getElementById('cam-modal').classList.add('open');
+  // Update instructions based on context
+  const instr = document.getElementById('cam-instructions');
+  if(instr) {
+    if(cameraContext === 'buyInstead') instr.textContent = 'Scan a bottle to find what to buy instead';
+    else if(cameraContext === 'altFinder') instr.textContent = 'Scan a bottle to find alternatives';
+    else instr.textContent = 'Point at a bottle label — AI reads it automatically';
+  }
+  startCameraCapture();
+}
+
+function closeCamera() {
+  document.getElementById('cam-modal').classList.remove('open');
+  stopCamera();
+}
+
+function stopCamera() {
+  if(cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  if(labelCaptureInterval) { clearInterval(labelCaptureInterval); labelCaptureInterval = null; }
+  const video = document.getElementById('cam-video');
+  if(video) { video.srcObject = null; }
+}
+
+async function startCameraCapture() {
+  const video   = document.getElementById('cam-video');
+  const status  = document.getElementById('cam-status');
+  const container  = document.getElementById('cam-container');
+  const fallback   = document.getElementById('cam-fallback');
+  const fileInput  = document.getElementById('cam-file-input');
+
+  status.textContent = 'Starting camera…';
+
+  // Wire up the file input (works on every iOS version, no permissions needed)
+  fileInput.onchange = async function() {
+    const file = fileInput.files[0];
+    if(!file) return;
+    status.textContent = '🔍 Analyzing photo…';
+    try {
+      const base64 = await fileToBase64(file);
+      await identifyLabelFromImage(base64, status);
+    } catch(err) {
+      status.textContent = '⚠️ Could not read photo. Try again.';
+    }
+  };
+
+  // Try live getUserMedia first
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showFallback(container, fallback, status, 'Live camera not available.');
+    return;
+  }
+
+  try {
+    // iOS needs the simplest possible constraints
+    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    cameraStream = stream;
+    video.muted = true;
+    video.srcObject = stream;
+    try { await video.play(); } catch(e) {}
+
+    container.style.display = 'block';
+    fallback.style.display  = 'none';
+    status.textContent = '📸 Point at a bottle label';
+    startLabelTextCapture(video, status);
+
+  } catch(err) {
+    // Any failure → show the file input fallback (always works on iOS)
+    showFallback(container, fallback, status,
+      err.name === 'NotAllowedError'
+        ? '📷 Camera permission denied — use photo mode below'
+        : '📷 Live camera unavailable — use photo mode below'
+    );
+  }
+}
+
+function showFallback(container, fallback, status, msg) {
+  container.style.display = 'none';
+  fallback.style.display  = 'block';
+  status.textContent = msg;
+}
+
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result.split(',')[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function startLabelTextCapture(video, status) {
+  if(labelCaptureInterval) clearInterval(labelCaptureInterval);
+  let scanning = false;
+  labelCaptureInterval = setInterval(async () => {
+    if(!document.getElementById('cam-modal').classList.contains('open')) {
+      clearInterval(labelCaptureInterval); labelCaptureInterval = null; return;
+    }
+    if(scanning || !video.videoWidth || !video.videoHeight) return;
+    scanning = true;
+    try {
+      const canvas = document.getElementById('cam-canvas');
+      canvas.width  = Math.min(video.videoWidth,  800);
+      canvas.height = Math.min(video.videoHeight, 600);
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      const base64 = canvas.toDataURL('image/jpeg', 0.7).split(',')[1];
+      if(base64) {
+        status.textContent = '🔍 Analyzing…';
+        await identifyLabelFromImage(base64, status);
+      }
+    } catch(e) {
+      status.textContent = '📸 Point at a bottle label';
+    } finally { scanning = false; }
+  }, 3000);
+}
+
+async function identifyLabelFromImage(base64, status) {
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 100,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: base64 } },
+          { type: 'text', text: 'If this image shows a bourbon or whiskey bottle label, reply with ONLY the brand name, nothing else. If no bottle label is visible, reply with only the word: none' }
+        ]}]
+      })
+    });
+    if(!resp.ok) { status.textContent = '📸 Point at a bottle label'; return; }
+    const data = await resp.json();
+    const text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('').trim();
+    if(!text || text.toLowerCase() === 'none' || text.length > 80) {
+      status.textContent = '📸 Point at a bottle label';
+      return;
+    }
+    const match = findBestMatch(text);
+    if(match) {
+      status.textContent = '✅ Found: ' + match.brand;
+      if(navigator.vibrate) navigator.vibrate([30,60,30]);
+      setTimeout(() => {
+        closeCamera();
+        addToRecent(match.brand);
+        if(cameraContext === 'buyInstead') {
+          currentTab = 4;
+          render();
+          // Scroll to and highlight the matching swap card
+          setTimeout(() => {
+            const el = document.getElementById('swap-' + match.brand.replace(/\s+/g,'_').replace(/[^a-z0-9_]/gi,''));
+            if(el) { el.scrollIntoView({behavior:'smooth', block:'center'}); el.classList.add('cam-highlight'); }
+          }, 200);
+        } else if(cameraContext === 'altFinder') {
+          currentTab = 5;
+          altSelectBrand(match.brand);
+          // Auto-run AI search
+          setTimeout(() => runAltAi(), 300);
+        } else {
+          searchQuery = match.brand; filterMode = 'all'; openCard = match.brand; currentTab = 0;
+          render();
+        }
+        showToast('✅ Found: ' + match.brand);
+      }, 700);
+    } else {
+      status.textContent = '👀 Saw: "' + text + '" — searching…';
+      setTimeout(() => {
+        closeCamera();
+        if(cameraContext === 'altFinder') {
+          currentTab = 5; altQuery = text; altSelectedBrand = null; render();
+        } else {
+          searchQuery = text; filterMode = 'all'; currentTab = 0; render();
+        }
+      }, 700);
+    }
+  } catch(err) {
+    status.textContent = '📸 Point at a bottle label';
+  }
+}
+
+async function lookupBarcode(code) {
+  showToast('Looking up barcode ' + code + '…');
+  searchQuery = ''; currentTab = 0; render();
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514', max_tokens: 300,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: `What bourbon or whiskey product has barcode/UPC ${code}? Search and tell me the brand name. Be very brief.` }]
+      })
+    });
+    const data = await resp.json();
+    const text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('').trim();
+    if(text) {
+      const match = findBestMatch(text);
+      if(match) { searchQuery = match.brand; openCard = match.brand; showToast('Found: ' + match.brand); }
+    }
+  } catch(e) {}
+  render();
+}
+
+function findBestMatch(text) {
+  const lower = text.toLowerCase();
+  let best = null, bestScore = 0;
+  for(const b of BRANDS) {
+    const bname = b.brand.toLowerCase();
+    if(lower.includes(bname) && bname.length > bestScore) { best = b; bestScore = bname.length; }
+  }
+  return best;
+}
+
+
+function findBestMatch(text) {
+  const lower = text.toLowerCase();
+  let best = null, bestScore = 0;
+  for(const b of BRANDS) {
+    const bname = b.brand.toLowerCase();
+    if(lower.includes(bname) && bname.length > bestScore) { best = b; bestScore = bname.length; }
+  }
+  return best;
+}
+
+function showBarcodeResult(code, aiText) {
+  const main = document.getElementById('main');
+  const div = document.createElement('div');
+  div.style.cssText = 'background:var(--bg3);border:1px solid rgba(201,148,58,0.3);border-radius:12px;padding:16px;margin-bottom:12px;animation:fadeUp 0.25s ease;';
+  div.innerHTML = `<div style="color:var(--goldb);font-weight:700;font-family:Playfair Display,serif;margin-bottom:8px">📊 Barcode ${e(code)}</div>
+    <div style="font-size:13px;color:var(--text2);line-height:1.75">${e(aiText)}</div>
+    <button onclick="this.parentElement.remove()" style="margin-top:10px;padding:6px 14px;border-radius:16px;background:transparent;border:1px solid rgba(61,37,8,0.4);color:var(--text3);font-family:DM Sans,sans-serif;font-size:12px;cursor:pointer">Dismiss</button>`;
+  main.insertBefore(div, main.firstChild);
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RENDER ENGINE
+// ═══════════════════════════════════════════════════════════════════════════
+function render() {
+  document.querySelectorAll('.nav-btn').forEach((b,i) => b.classList.toggle('active', i===currentTab));
+  const m = document.getElementById('main');
+  if(currentTab===0)      m.innerHTML = renderScanner();
+  else if(currentTab===1) m.innerHTML = renderCameraTab();
+  else if(currentTab===2) m.innerHTML = renderLabel();
+  else if(currentTab===3) m.innerHTML = renderOwnership();
+  else if(currentTab===4) m.innerHTML = renderBuyInstead();
+  else                    m.innerHTML = renderAltFinder();
+  attachHandlers();
+}
+
+// ─── SCANNER ──────────────────────────────────────────────────────────────
+function renderScanner() {
+  const pills = [
+    {k:'all',l:'All'},{k:'legit',l:'✅ Legit'},{k:'sourced',l:'🚨 NDP'},
+    {k:'mixed',l:'⚠️ Mixed'},{k:'independent',l:'🔑 Independent'},
+  ];
+  const pillsH = pills.map(p =>
+    `<button class="pill${filterMode===p.k?' active':''}" onclick="setFilter('${p.k}')">${e(p.l)}</button>`
+  ).join('');
+
+  const INDEP_PARENTS = Object.keys(CONGLOMERATES).filter(k=>k!=='Independent / Family-Owned');
+  const filtered = BRANDS.filter(b => {
+    const q = searchQuery.toLowerCase();
+    const mq = !q || b.brand.toLowerCase().includes(q) || b.maker.toLowerCase().includes(q)
+      || b.parent.toLowerCase().includes(q) || b.notes.toLowerCase().includes(q)
+      || (b.tags||[]).join(' ').toLowerCase().includes(q);
+    const mf = filterMode==='all'
+      ||(filterMode==='legit'&&b.verdict==='legit')
+      ||(filterMode==='sourced'&&b.verdict==='sourced')
+      ||(filterMode==='mixed'&&b.verdict==='mixed')
+      ||(filterMode==='independent'&&!INDEP_PARENTS.includes(b.parent));
+    return mq && mf;
+  });
+
+  const cards = filtered.map((b, idx) => {
+    const cColor = COLOR[b.parent]||'#888';
+    const isOpen = openCard===b.brand;
+    const isFaved = favorites.includes(b.brand);
+    const safeId = b.brand.replace(/\s+/g,'_').replace(/[^a-z0-9_]/gi,'');
+    const tagsH = (b.tags||[]).map(t=>`<span class="tag">${e(t)}</span>`).join('');
+    const verdictLabel = b.verdict==='legit'?'✅ Legit':b.verdict==='sourced'?'🚨 NDP':'⚠️ Mixed';
+    const scoreWidth = b.pts ? Math.round((b.pts - 70) / 30 * 100) : 0;
+
+    let expandH = '';
+    if(isOpen) {
+      const cInfo = CONGLOMERATES[b.parent];
+      const altsH = (SWAPS[b.brand]||b.alts||[]).length > 0 ?
+        `<div class="alts-sec"><div class="alts-lbl">💡 Better Alternatives:</div>${
+          (SWAPS[b.brand]||b.alts||[]).map(a => {
+            const rd=getBrand(a);
+            return `<button class="alt-chip" onclick="jumpTo('${e(a)}')">${e(a)}${rd?' · '+e(rd.price):''}</button>`;
+          }).join('')
+        }</div>` : '';
+      const cachedAI = aiResults[b.brand];
+      const aiH = `<div id="ai-${safeId}">
+        ${cachedAI
+          ? `<div class="ai-result" style="border-color:rgba(201,148,58,0.3)"><span class="ai-label">🔍 Live Search Results</span>${e(cachedAI).replace(/\n/g,'<br>')}</div>`
+          : `<button class="ai-btn" onclick="event.stopPropagation();lookupBrandByName('${e(b.brand)}')">🔍 Search Latest Web Info on ${e(b.brand)}</button>`
+        }
+      </div>`;
+      expandH = `<div class="expand">
+        <div class="notes ${b.verdict}">${e(b.notes)}</div>
+        ${cInfo?`<div class="parent-box" style="border:1px solid ${cColor}20;border-left:3px solid ${cColor}">
+          <div class="parent-name" style="color:${cColor}">${e(cInfo.country)} ${e(b.parent)}</div>
+          <div class="parent-note">${e(cInfo.note)} · Revenue: ${e(cInfo.revenue)}</div>
+        </div>`:''}
+        ${altsH}
+        ${aiH}
+      </div>`;
+    }
+
+    return `<div class="bcard ${b.verdict}${isOpen?' open':''}" onclick="toggleCard('${e(b.brand)}')" style="animation-delay:${Math.min(idx*0.03,0.4)}s">
+      <div class="bcard-top">
+        <div class="bcard-name-row">
+          <span class="bcard-name">${e(b.brand)}</span>
+          ${b.pts?`<span class="bcard-pts">⭐${b.pts}</span>`:''}
+        </div>
+        <div style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+          <button class="fav-btn${isFaved?' faved':''}" onclick="event.stopPropagation();toggleFavorite('${e(b.brand)}')" title="${isFaved?'Remove favorite':'Save favorite'}">${isFaved?'⭐':'☆'}</button>
+          <span class="verdict-badge ${b.verdict}">${verdictLabel}</span>
+        </div>
+      </div>
+      <div class="bcard-maker">🏭 ${e(b.maker)} · 📍 ${e(b.loc)}</div>
+      <div class="bcard-meta">
+        <span class="bcard-parent" style="color:${cColor}">🏢 ${e(b.parent)}</span>
+        <span class="bcard-price">${e(b.price)}</span>
+      </div>
+      ${b.pts?`<div class="score-bar-wrap">
+        <div class="score-bar-label"><span>Truth Score</span><span>${b.pts}/100</span></div>
+        <div class="score-bar-track"><div class="score-bar-fill ${b.verdict}" style="width:${scoreWidth}%"></div></div>
+      </div>`:''}
+      ${tagsH?`<div class="tags">${tagsH}</div>`:''}
+      ${expandH}
+    </div>`;
+  }).join('');
+
+  // Favorites section
+  let favsH = '';
+  if(favorites.length > 0) {
+    favsH = `<div class="fav-section">
+      <div class="fav-label">⭐ Your Favorites</div>
+      <div class="recent-chips">${favorites.map(n=>{
+        const b=getBrand(n); if(!b) return '';
+        const vc=b.verdict==='legit'?'var(--legit)':b.verdict==='sourced'?'var(--sourced)':'var(--mixed)';
+        return `<span class="recent-chip" onclick="jumpTo('${e(n)}')">${e(n)} <span class="recent-badge" style="color:${vc}">${b.verdict==='legit'?'✅':b.verdict==='sourced'?'🚨':'⚠️'}</span></span>`;
+      }).join('')}</div>
+    </div>`;
+  }
+
+  // Recently viewed
+  let recentH = '';
+  if(recentlyViewed.length > 0) {
+    recentH = `<div class="recent-section">
+      <div class="recent-label">🕐 Recently Viewed</div>
+      <div class="recent-chips">${recentlyViewed.map(n=>{
+        const b=getBrand(n); if(!b) return '';
+        const vc=b.verdict==='legit'?'var(--legit)':b.verdict==='sourced'?'var(--sourced)':'var(--mixed)';
+        return `<span class="recent-chip" onclick="jumpTo('${e(n)}')">${e(n)} <span class="recent-badge" style="color:${vc}">${b.verdict==='legit'?'✅':b.verdict==='sourced'?'🚨':'⚠️'}</span></span>`;
+      }).join('')}</div>
+    </div>`;
+  }
+
+  return `
+    <div class="search-wrap">
+      <input class="search-input" id="si" type="search" placeholder="Search brand, distillery, parent…" value="${e(searchQuery)}" autocomplete="off" autocorrect="off" spellcheck="false">
+      <button class="search-clear" id="sc" onclick="clearSearch()" style="display:${searchQuery?'block':'none'}">✕</button>
+    </div>
+    <div class="pills">${pillsH}</div>
+    ${favsH}
+    ${!searchQuery ? recentH : ''}
+    <p class="results-count">${filtered.length} brand${filtered.length!==1?'s':''} · tap to expand · ☆ to save · 🔍 for live web data</p>
+    <div id="cards">${cards}</div>
+    <div class="footer">Data: TTB.gov · Whisky Advocate · Breaking Bourbon · Wikipedia · Live AI search<br>Educational use only. Tap 🔍 on any brand for current web information.</div>`;
+}
+
+// ─── CAMERA TAB ────────────────────────────────────────────────────────────
+function renderCameraTab() {
+  return `
+    <h2 class="section-h2">📸 Camera Scanner</h2>
+    <p class="section-desc">Point at a bottle label — AI reads it. Or take a photo if live camera isn't available.</p>
+
+    <button class="cam-btn" onclick="openCamera()">
+      <span style="font-size:26px">📷</span>
+      <span>Open Camera / Scan Label</span>
+    </button>
+
+    <div class="info-box" style="margin-top:14px">
+      <div class="info-title" style="color:var(--goldb)">📱 Two Ways to Scan</div>
+      <div class="info-text">
+        <strong style="color:var(--text)">Live camera:</strong> Hold up to label, AI reads every 3 seconds<br><br>
+        <strong style="color:var(--text)">Photo mode:</strong> If live camera is blocked, tap "Take Photo" inside the scanner to use your camera roll
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <p style="color:var(--text3);font-size:13px;margin-bottom:10px">Or search manually:</p>
+      <div class="search-wrap">
+        <input class="search-input" id="cam-si" type="search" placeholder="Type a brand name…" autocomplete="off" autocorrect="off" oninput="jumpToSearch(this.value)" style="font-size:16px">
+      </div>
+    </div>`;
+}
+
+// ─── LABEL ─────────────────────────────────────────────────────────────────
+function renderLabel() {
+  const cluesH = LABEL_CLUES.map(c => {
+    const cls = c.safe===true?'safe':c.safe===false?'unsafe':'warn';
+    return `<div class="clue ${cls}"><div class="clue-q">"${e(c.q)}"</div><div class="clue-a ${cls}">${e(c.a)}</div></div>`;
+  }).join('');
+  return `
+    <h2 class="section-h2">📋 How to Read a Bourbon Label</h2>
+    <p class="section-desc">Brands aren't required to prominently disclose their real distillery. But the clues are always there if you know where to look.</p>
+    ${cluesH}
+    <div class="info-box">
+      <div class="info-title" style="color:var(--goldb)">🔬 TTB.gov Pro Tip</div>
+      <div class="info-text">Every US distillery has a DSP (Distilled Spirits Plant) number on the label. Search it at <strong>ttb.gov</strong> to find the actual registered address. If it doesn't match the brand's story location — factory product.</div>
+    </div>
+    <div class="info-box" style="margin-top:12px;border-color:rgba(232,68,68,0.2)">
+      <div class="info-title" style="color:var(--sourced)">🚨 The MGP Fingerprint: 95% Rye</div>
+      <div class="info-text">MGP Indiana's signature rye is 95% rye / 5% malted barley. If any bottle lists these exact proportions, it almost certainly came from MGP's Ross & Squibb Distillery in Lawrenceburg, Indiana — regardless of what state the label implies.</div>
+    </div>
+    <div class="footer">This tool is for education. Always verify with TTB.gov for the most current information.</div>`;
+}
+
+// ─── OWNERSHIP ────────────────────────────────────────────────────────────
+function renderOwnership() {
+  const groups = {};
+  BRANDS.forEach(b=>{ if(!groups[b.parent])groups[b.parent]=[]; groups[b.parent].push(b); });
+  const keys = Object.keys(groups);
+  const pillsH = `<button class="pill${ownerFilter==='all'?' active':''}" onclick="setOwner('all')">All</button>`
+    + keys.map(k=>{
+      const col=COLOR[k]||'#888';
+      return `<button class="pill${ownerFilter===k?' active':''}" style="${ownerFilter===k?`background:${col}22;color:${col};border-color:${col}40`:''}" onclick="setOwner('${e(k)}')">${e(k.split(' (')[0])}</button>`;
+    }).join('');
+  const sortOrder=["Diageo (UK)","Suntory Global Spirits (Japan)","Pernod Ricard (France)","Brown-Forman (USA)","Sazerac Company (USA)","Heaven Hill Brands (USA)","MGP Ingredients (USA)","Campari Group (Italy)","Kirin Brewery (Japan)","Bacardi (Private)","Constellation Brands (USA)","Molson Coors (USA/Canada)"];
+  const sorted = keys.sort((a,b)=>{const ai=sortOrder.indexOf(a),bi=sortOrder.indexOf(b);return(ai<0?99:ai)-(bi<0?99:bi);});
+  const cardsH = sorted.filter(k=>ownerFilter==='all'||ownerFilter===k).map(k=>{
+    const col=COLOR[k]||'#888', info=CONGLOMERATES[k];
+    const brandsH=groups[k].map(b=>{
+      const c2=b.verdict==='legit'?'var(--legit)':b.verdict==='sourced'?'var(--sourced)':'var(--mixed)';
+      return `<button class="o-brand" style="background:${c2}12;border:1px solid ${c2}35;color:${c2}" onclick="jumpTo('${e(b.brand)}')">${e(b.brand)}</button>`;
+    }).join('');
+    return `<div class="owner-card" style="border:1px solid ${col}20;border-left:4px solid ${col}">
+      <div class="owner-name" style="color:${col}">${info?info.country:''} ${e(k)}</div>
+      ${info?`<div class="owner-note">${e(info.note)} · Revenue: ${e(info.revenue)}</div>`:''}
+      <div class="owner-brands">${brandsH}</div>
+    </div>`;
+  }).join('');
+  return `<h2 class="section-h2">🏢 The Conglomerate Map</h2>
+    <p class="section-desc">Most American bourbon is owned by foreign or publicly-traded conglomerates. Tap any brand to look it up.</p>
+    <div class="pills" style="margin-bottom:16px">${pillsH}</div>
+    ${cardsH}
+    <div class="footer">Ownership current as of 2024–2025. Acquisitions happen frequently — tap any brand's 🔍 button for latest news.</div>`;
+}
+
+// ─── BUY INSTEAD ──────────────────────────────────────────────────────────
+function renderBuyInstead() {
+  const ndps = BRANDS.filter(b=>b.verdict==='sourced'||b.verdict==='mixed');
+  const cardsH = ndps.map(b=>{
+    const swaps = SWAPS[b.brand]||b.alts||[];
+    if(!swaps.length) return '';
+    const vc = b.verdict==='sourced'?'var(--sourced)':'var(--mixed)';
+    const safeId = b.brand.replace(/\s+/g,'_').replace(/[^a-z0-9_]/gi,'');
+    const ai = buyAiResults[b.brand];
+    const itemsH = swaps.map(n=>{
+      const rd=getBrand(n); if(!rd) return '';
+      const col = COLOR[rd.parent]||'#888';
+      return `<div class="buy-item">
+        <div>
+          <div class="buy-name">✅ ${e(rd.brand)}</div>
+          <div class="buy-maker">🏭 ${e(rd.maker)} · 📍 ${e(rd.loc)}</div>
+          <div class="buy-note-t">${e(rd.notes.split('.')[0])}.</div>
+          <div style="font-size:10px;color:${col};margin-top:3px">${e(rd.parent.split(' (')[0])}</div>
+        </div>
+        <div style="flex-shrink:0;text-align:right">
+          <div class="buy-price">${e(rd.price)}</div>
+          ${rd.pts?`<div class="buy-pts">⭐${rd.pts}pts</div>`:''}
+        </div>
+      </div>`;
+    }).join('');
+    const aiH = ai && ai.loading
+      ? `<div class="ai-result" style="margin-top:10px"><div class="ai-loading">Searching web for ${e(b.brand)} info…</div></div>`
+      : ai && ai.text
+      ? `<div class="ai-result" style="margin-top:10px;border-color:rgba(201,148,58,0.3)"><span class="ai-label">🔍 Live Web Info</span>${e(ai.text).replace(/\n/g,'<br>')}</div>`
+      : `<button class="ai-btn" style="margin-top:10px" onclick="buyWebSearch('${e(b.brand)}')">🔍 Search web for current pricing &amp; availability</button>`;
+    return `<div class="swap" id="swap-${safeId}">
+      <div class="skip-header">
+        <span style="font-size:20px">❌</span>
+        <div>
+          <div class="skip-name" style="color:${vc}">${e(b.brand)}</div>
+          <div class="skip-sub">${e(b.price)} · ${e(b.parent.split(' (')[0])}</div>
+        </div>
+      </div>
+      <div class="skip-note">${e(b.notes.split('.')[0])}.</div>
+      <div class="buy-lbl">✅ Buy instead:</div>
+      ${itemsH}
+      ${aiH}
+    </div>`;
+  }).join('');
+  return `
+    <button class="tab-cam-btn" onclick="openCamera('buyInstead')">
+      <span class="tab-cam-btn-icon">📷</span>
+      <div class="tab-cam-btn-text">
+        <div class="tab-cam-btn-title">Scan a Bottle</div>
+        <div class="tab-cam-btn-sub">Point at any label — jumps straight to its swap</div>
+      </div>
+    </button>
+    <h2 class="section-h2">💡 Skip It → Buy This Instead</h2>
+    <p class="section-desc">For every overpriced NDP there's a legitimately distilled bottle that delivers more.</p>
+    ${cardsH}
+    <div class="footer">Tap 🔍 on any card for live web pricing. Prices are approximate MSRP.</div>`;
+}
+
+async function buyWebSearch(brandName) {
+  buyAiResults[brandName] = { loading: true, text: null };
+  if(currentTab === 4) document.getElementById('main').innerHTML = renderBuyInstead();
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514', max_tokens: 400,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: 'You are a bourbon expert. Search for current info on the requested bourbon: recent ownership changes, current street pricing, availability, and any recent controversy or news. Be concise, 120 words max, plain text only, no markdown.',
+        messages: [{ role: 'user', content: `Search for current pricing, availability, and any recent news about: ${brandName} bourbon whiskey. Who actually makes it and what does it cost right now?` }]
+      })
+    });
+    const data = await resp.json();
+    const text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('\n').trim();
+    buyAiResults[brandName] = { loading: false, text: text || 'No results found.' };
+  } catch(err) {
+    buyAiResults[brandName] = { loading: false, text: 'Unable to connect. Check network.' };
+  }
+  if(currentTab === 4) document.getElementById('main').innerHTML = renderBuyInstead();
+}
+
+// ─── ALT FINDER ────────────────────────────────────────────────────────────
+function renderAltFinder() {
+  const matchingSugs = altQuery.length >= 2
+    ? BRANDS.filter(b => b.brand.toLowerCase().includes(altQuery.toLowerCase())).slice(0, 8)
+    : [];
+
+  const sugH = matchingSugs.length && !altSelectedBrand ? `
+    <div class="alt-suggestions">
+      ${matchingSugs.map(b => `
+        <div class="alt-sug-item" onclick="altSelectBrand('${e(b.brand)}')">
+          <span class="alt-sug-name">${e(b.brand)}</span>
+          <span class="alt-sug-badge ${b.verdict}">${b.verdict==='legit'?'✅ Legit':b.verdict==='sourced'?'🚨 NDP':'⚠️ Mixed'}</span>
+        </div>`).join('')}
+    </div>` : '';
+
+  const filtersH = `
+    <div class="alt-filters">
+      <div class="alt-filter-group">
+        <div class="alt-filter-label">💰 Budget</div>
+        <select class="alt-filter-sel" onchange="altSetBudget(this.value)">
+          <option value="any"${altBudget==='any'?' selected':''}>Any price</option>
+          <option value="under30"${altBudget==='under30'?' selected':''}>Under $30</option>
+          <option value="30to60"${altBudget==='30to60'?' selected':''}>$30–$60</option>
+          <option value="60to100"${altBudget==='60to100'?' selected':''}>$60–$100</option>
+          <option value="over100"${altBudget==='over100'?' selected':''}>$100+</option>
+        </select>
+      </div>
+      <div class="alt-filter-group">
+        <div class="alt-filter-label">🌶️ Flavor Profile</div>
+        <select class="alt-filter-sel" onchange="altSetFlavor(this.value)">
+          <option value="any"${altFlavor==='any'?' selected':''}>Any style</option>
+          <option value="wheated"${altFlavor==='wheated'?' selected':''}>Wheated / Sweet</option>
+          <option value="highRye"${altFlavor==='highRye'?' selected':''}>High Rye / Spicy</option>
+          <option value="value"${altFlavor==='value'?' selected':''}>Best Value</option>
+          <option value="caskStrength"${altFlavor==='caskStrength'?' selected':''}>Cask Strength</option>
+          <option value="craft"${altFlavor==='craft'?' selected':''}>Independent Craft</option>
+        </select>
+      </div>
+    </div>`;
+
+  let selectedCardH='', curatedH='', aiSectionH='';
+
+  if(altSelectedBrand) {
+    const b = altSelectedBrand;
+    const vc = b.verdict==='sourced'?'var(--sourced)':b.verdict==='mixed'?'var(--mixed)':'var(--legit)';
+    const verdict = b.verdict==='legit'?'✅ Legitimate — actually distilled here':b.verdict==='sourced'?'🚨 NDP — sourced/factory bourbon':'⚠️ Mixed — sourced base, finished here';
+
+    selectedCardH = `
+      <div class="alt-selected-card ${b.verdict}">
+        <div class="alt-sc-header">
+          <div>
+            <div class="alt-sc-name">${e(b.brand)}</div>
+            <div style="font-size:11px;font-weight:700;margin-top:3px;color:${vc}">${verdict}</div>
+          </div>
+          <button class="alt-sc-clear" onclick="altClearBrand()">✕ Clear</button>
+        </div>
+        <div class="alt-sc-meta">🏭 ${e(b.maker)} · 📍 ${e(b.loc)} · ${e(b.price)}</div>
+        <div class="alt-sc-note">${e(b.notes.split('.')[0])}.</div>
+      </div>`;
+
+    const swaps = (SWAPS[b.brand] || b.alts || []).map(n => getBrand(n)).filter(Boolean);
+    const filteredSwaps = filterAltResults(swaps);
+
+    if(filteredSwaps.length) {
+      curatedH = `
+        <div class="alt-curated-list">
+          <div class="alt-section-lbl">✅ Curated Alternatives (${filteredSwaps.length})</div>
+          ${filteredSwaps.map(r=>`
+            <div class="alt-rec-card" onclick="altJumpTo('${e(r.brand)}')">
+              <div class="alt-rec-left">
+                <div class="alt-rec-name">${e(r.brand)}</div>
+                <div class="alt-rec-maker">🏭 ${e(r.maker)}</div>
+                <div class="alt-rec-note">${e(r.notes.split('.')[0])}.</div>
+              </div>
+              <div class="alt-rec-right">
+                <div class="alt-rec-price">${e(r.price)}</div>
+                ${r.pts?`<div class="alt-rec-pts">⭐ ${r.pts} pts</div>`:''}
+              </div>
+            </div>`).join('')}
+        </div>`;
+    } else if(b.verdict==='legit') {
+      curatedH = `<div class="info-box" style="margin-bottom:14px">
+        <div class="info-title" style="color:var(--legit)">✅ This is Legitimate Bourbon</div>
+        <div class="info-text">${e(b.brand)} is actually distilled by ${e(b.maker)}. You don't need an alternative — this is the real deal. Use the AI finder below to discover similar styles.</div>
+      </div>`;
+    } else {
+      curatedH = `<div class="info-box" style="margin-bottom:14px">
+        <div class="info-title" style="color:var(--mixed)">No curated swaps yet</div>
+        <div class="info-text">Use the AI Finder below — it will search current web data to recommend the best alternatives matching your budget and flavor preferences.</div>
+      </div>`;
+    }
+
+    const aiLoadingH = `<div class="ai-result"><div class="ai-loading">Finding the best alternatives for ${e(b.brand)}…</div></div>`;
+    aiSectionH = `
+      <div class="alt-ai-section">
+        <div class="alt-section-lbl">🤖 AI-Powered Finder</div>
+        <div id="alt-ai-output">
+          ${altAiLoading ? aiLoadingH : altAiResult
+            ? `<div class="alt-ai-output"><h4>🔍 AI Recommendations</h4>${e(altAiResult).replace(/\n/g,'<br>')}</div>`
+            : `<button class="alt-ai-btn" onclick="runAltAi()">
+                🤖 Find More Alternatives with AI
+                <span style="font-size:11px;color:var(--text3)">(live web search)</span>
+              </button>`}
+        </div>
+      </div>`;
+  } else {
+    selectedCardH = `
+      <div class="alt-no-brand">
+        <div class="alt-no-icon">🔄</div>
+        <div style="color:var(--text2);font-family:Playfair Display,serif;font-size:15px;margin-bottom:6px">Alternative Finder</div>
+        Search for any bourbon above to find better, legitimately-distilled alternatives — filtered by your budget and flavor preference.
+      </div>`;
+  }
+
+  return `
+    <div class="alt-finder-wrap">
+      <div class="alt-search-hero">
+        <button class="tab-cam-btn" style="margin-bottom:12px" onclick="openCamera('altFinder')">
+          <span class="tab-cam-btn-icon">📷</span>
+          <div class="tab-cam-btn-text">
+            <div class="tab-cam-btn-title">Scan a Bottle</div>
+            <div class="tab-cam-btn-sub">AI identifies it &amp; searches web for alternatives</div>
+          </div>
+        </button>
+        <div class="alt-hero-label">🔍 Or type to find alternatives for…</div>
+        <div class="alt-search-row">
+          <input class="alt-search-input" id="alt-si" type="search"
+            placeholder="Search any bourbon brand…" value="${e(altQuery)}"
+            autocomplete="off" autocorrect="off" spellcheck="false"
+            oninput="altOnInput(this.value)">
+          ${altQuery ? `<button class="alt-search-clear" onclick="altClearSearch()">✕</button>` : ''}
+        </div>
+        ${sugH}
+      </div>
+      ${filtersH}
+      ${selectedCardH}
+      ${curatedH}
+      ${aiSectionH}
+      <div class="footer">Alternatives are legitimately self-distilled unless otherwise noted.</div>
+    </div>`;
+}
+
+function filterAltResults(brands) {
+  return brands.filter(b => {
+    if(altBudget !== 'any') {
+      const nums = (b.price||'').match(/\d+/g);
+      if(nums) {
+        const mid = (parseInt(nums[0])+parseInt(nums[nums.length-1]))/2;
+        if(altBudget==='under30' && mid>30) return false;
+        if(altBudget==='30to60' && (mid<30||mid>60)) return false;
+        if(altBudget==='60to100' && (mid<60||mid>100)) return false;
+        if(altBudget==='over100' && mid<100) return false;
+      }
+    }
+    if(altFlavor !== 'any') {
+      const tags = (b.tags||[]).join(' ').toLowerCase();
+      const notes = (b.notes||'').toLowerCase();
+      if(altFlavor==='wheated' && !tags.includes('wheat') && !notes.includes('wheat')) return false;
+      if(altFlavor==='highRye' && !tags.includes('rye') && !notes.includes('high-rye') && !notes.includes('high rye')) return false;
+      if(altFlavor==='value' && !tags.includes('value') && !tags.includes('budget')) return false;
+      if(altFlavor==='caskStrength' && !tags.includes('cask') && !notes.includes('cask') && !notes.includes('barrel proof') && !notes.includes('barrel-proof') && !notes.includes('uncut')) return false;
+      if(altFlavor==='craft' && b.parent !== 'Independent / Family-Owned') return false;
+    }
+    return true;
+  });
+}
+
+function altOnInput(v) { altQuery=v; if(!v) altSelectedBrand=null; altAiResult=null; altAiLoading=false; if(currentTab===5) renderAltTab(); }
+function altClearSearch() { altQuery=''; altSelectedBrand=null; altAiResult=null; altAiLoading=false; if(currentTab===5) renderAltTab(); }
+function altClearBrand() { altSelectedBrand=null; altAiResult=null; altAiLoading=false; altQuery=''; if(currentTab===5) renderAltTab(); }
+function altSelectBrand(name) { const b=getBrand(name); if(!b) return; altSelectedBrand=b; altQuery=name; altAiResult=null; altAiLoading=false; renderAltTab(); }
+function altSetBudget(v) { altBudget=v; renderAltTab(); }
+function altSetFlavor(v) { altFlavor=v; renderAltTab(); }
+function altJumpTo(name) { searchQuery=name; filterMode='all'; openCard=name; currentTab=0; render(); window.scrollTo(0,0); }
+function renderAltTab() { if(currentTab!==5) return; document.getElementById('main').innerHTML=renderAltFinder(); }
+
+async function runAltAi() {
+  if(!altSelectedBrand) return;
+  altAiLoading=true; altAiResult=null; renderAltTab();
+  const b=altSelectedBrand;
+  const budgetLabel={any:'any budget',under30:'under $30','30to60':'$30–$60','60to100':'$60–$100',over100:'over $100'}[altBudget]||'any budget';
+  const flavorLabel={any:'any style',wheated:'wheated/sweet',highRye:'high-rye/spicy',value:'best value',caskStrength:'cask strength/barrel proof',craft:'independent craft'}[altFlavor]||'any style';
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST', headers:{'Content-Type':'application/json','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:1000,
+        tools:[{type:'web_search_20250305',name:'web_search'}],
+        system:`You are an expert bourbon sommelier and industry transparency advocate. Search the web for current information. Recommend 3–5 legitimately self-distilled alternatives to the requested brand. For each give: Name, Distillery, current street price (search for this), and one sentence why it's a better buy. Use plain text only, no markdown, no headers. Prioritize independent and family-owned distilleries. Note any recent ownership changes you find. Max 250 words.`,
+        messages:[{role:'user',content:`The consumer wants alternatives to: ${b.brand} (${b.verdict==='sourced'?'NDP/sourced':b.verdict==='mixed'?'sourced base+finished':'self-distilled'}, ${b.price}, ${b.maker}). Budget preference: ${budgetLabel}. Flavor preference: ${flavorLabel}. Search for the best currently available alternatives that are actually distilled (not NDP).`}]
+      })
+    });
+    const data = await resp.json();
+    const text = (data.content||[]).filter(c=>c.type==='text').map(c=>c.text).join('\n').trim();
+    altAiResult = text || 'No results returned. Try adjusting filters.';
+  } catch(err) {
+    altAiResult = 'Unable to connect. Check network and try again.';
+  }
+  altAiLoading=false; renderAltTab();
+}
+
+// ─── EVENT HANDLERS ────────────────────────────────────────────────────────
+function attachHandlers() {
+  const si = document.getElementById('si');
+  if(si) {
+    si.addEventListener('input', evt => {
+      searchQuery = evt.target.value;
+      const sc = document.getElementById('sc');
+      if(sc) sc.style.display = searchQuery ? 'block' : 'none';
+      openCard = null;
+      renderCards();
+    });
+  }
+}
+
+function renderCards() {
+  if(currentTab!==0) return;
+  document.getElementById('main').innerHTML = renderScanner();
+  attachHandlers();
+}
+
+function switchTab(n) {
+  currentTab = n;
+  if(n !== 0) { openCard = null; }
+  render();
+  window.scrollTo(0, 0);
+}
+
+function setFilter(f) { filterMode=f; openCard=null; renderCards(); }
+function setOwner(f) { ownerFilter=f; render(); }
+function clearSearch() { searchQuery=''; openCard=null; renderCards(); }
+function toggleCard(name) {
+  openCard = openCard===name ? null : name;
+  if(openCard) addToRecent(name);
+  if(currentTab===0) renderCards();
+}
+function jumpTo(name) {
+  searchQuery=name; filterMode='all'; openCard=name; currentTab=0;
+  addToRecent(name); render(); window.scrollTo(0,0);
+}
+function jumpToSearch(v) {
+  searchQuery=v; filterMode='all'; openCard=null; currentTab=0; render();
+}
+
+window.addEventListener('popstate', closeCamera);
+
+// Init
+document.getElementById('stats-row').innerHTML = buildStatsRow();
+render();
+</script>
+</body>
+</html>
